@@ -593,6 +593,19 @@ wheels = [
 ]
 
 [[package]]
+name = "cmudict"
+version = "1.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "importlib-metadata" },
+    { name = "importlib-resources" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/98/cf/6f1fe88339c28e38acfa8f478b640778f7e5cc8bb1bd2cbf32cfcd2c515e/cmudict-1.1.1.tar.gz", hash = "sha256:23c3914c85465f6a7d26d2d8974fa341dd7bc924d1ffa501b41406b936923db1", size = 935697, upload-time = "2025-07-24T10:51:09.6Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/27/5d/b14b1d8319c977771e8e94eb7f34404dd116f1d7d78dd9e0f2da87ac4609/cmudict-1.1.1-py3-none-any.whl", hash = "sha256:4b4737c0fa52375b1601d7b63824f155879a824064b6ecac07d347eae60fc046", size = 939663, upload-time = "2025-07-24T10:51:08.117Z" },
+]
+
+[[package]]
 name = "cohere"
 version = "5.6.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3487,6 +3500,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pyphen"
+version = "0.17.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/56/e4d7e1bd70d997713649c5ce530b2d15a5fc2245a74ca820fc2d51d89d4d/pyphen-0.17.2.tar.gz", hash = "sha256:f60647a9c9b30ec6c59910097af82bc5dd2d36576b918e44148d8b07ef3b4aa3", size = 2079470, upload-time = "2025-01-20T13:18:36.296Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7b/1f/c2142d2edf833a90728e5cdeb10bdbdc094dde8dbac078cee0cf33f5e11b/pyphen-0.17.2-py3-none-any.whl", hash = "sha256:3a07fb017cb2341e1d9ff31b8634efb1ae4dc4b130468c7c39dd3d32e7c3affd", size = 2079358, upload-time = "2025-01-20T13:18:29.629Z" },
+]
+
+[[package]]
 name = "pypika"
 version = "0.48.9"
 source = { registry = "https://pypi.org/simple" }
@@ -3966,6 +3988,7 @@ dependencies = [
     { name = "langchain-google-vertexai" },
     { name = "lxml" },
     { name = "newspaper3k" },
+    { name = "nltk" },
     { name = "openpyxl" },
     { name = "pandas" },
     { name = "playwright" },
@@ -3977,6 +4000,7 @@ dependencies = [
     { name = "rich" },
     { name = "sqlalchemy" },
     { name = "structlog" },
+    { name = "textstat" },
     { name = "typer" },
 ]
 
@@ -4004,6 +4028,7 @@ requires-dist = [
     { name = "lxml", specifier = "==5.3.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = "==1.13.0" },
     { name = "newspaper3k", specifier = "==0.2.8" },
+    { name = "nltk", specifier = ">=3.9.1" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "playwright", specifier = "==1.48.0" },
@@ -4018,12 +4043,22 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = "==0.7.4" },
     { name = "sqlalchemy", specifier = ">=2.0.36" },
     { name = "structlog", specifier = ">=24.4.0" },
+    { name = "textstat", specifier = ">=0.7.8" },
     { name = "typer", specifier = ">=0.13.1" },
 ]
 provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = "==8.3.3" }]
+
+[[package]]
+name = "setuptools"
+version = "80.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/18/5d/3bf57dcd21979b887f014ea83c24ae194cfcd12b9e0fda66b957c69d1fca/setuptools-80.9.0.tar.gz", hash = "sha256:f36b47402ecde768dbfafc46e8e4207b4360c654f1f3bb84475f0a28628fb19c", size = 1319958, upload-time = "2025-05-27T00:56:51.443Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl", hash = "sha256:062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922", size = 1201486, upload-time = "2025-05-27T00:56:49.664Z" },
+]
 
 [[package]]
 name = "sgmllib3k"
@@ -4228,6 +4263,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a3/4d/6a19536c50b849338fcbe9290d562b52cbdcf30d8963d3588a68a4107df1/tenacity-8.5.0.tar.gz", hash = "sha256:8bc6c0c8a09b31e6cad13c47afbed1a567518250a9a171418582ed8d9c20ca78", size = 47309, upload-time = "2024-07-05T07:25:31.836Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d2/3f/8ba87d9e287b9d385a02a7114ddcef61b26f86411e121c9003eb509a1773/tenacity-8.5.0-py3-none-any.whl", hash = "sha256:b594c2a5945830c267ce6b79a166228323ed52718f30302c1359836112346687", size = 28165, upload-time = "2024-07-05T07:25:29.591Z" },
+]
+
+[[package]]
+name = "textstat"
+version = "0.7.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cmudict" },
+    { name = "pyphen" },
+    { name = "setuptools" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f1/24/a7ff3572af79a905197a6022e11ded12d3231fbf50f07dd026eee5916e8d/textstat-0.7.8.tar.gz", hash = "sha256:1839f489fe6a59f73ab3948a1f3c38f7f12d1919b71b9f819c0bbd68a7c60758", size = 164785, upload-time = "2025-07-22T08:45:55.163Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e2/db/e1c8e5afd18f712ba5426ec4c6068afd4ad88dc50ec765c4f6939d828341/textstat-0.7.8-py3-none-any.whl", hash = "sha256:26960cbe653e58761ff68d2e030cfb18e48f06d1c952cb39d169d898f6b3db2c", size = 239112, upload-time = "2025-07-22T08:45:53.927Z" },
 ]
 
 [[package]]

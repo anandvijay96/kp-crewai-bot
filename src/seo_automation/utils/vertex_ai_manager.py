@@ -32,12 +32,8 @@ class VertexAIManager:
             "gemini-2.5-flash": {"input": 0.000125, "output": 0.000375}  # Gemini 2.5 Flash pricing
         }
         
-        logger.info(
-            "vertex_ai_manager_initialized",
-            project_id=self.project_id,
-            location=self.location,
-            daily_budget=self.daily_budget
-        )
+        # Simple logging to avoid structlog issues
+        print(f"✅ VertexAI Manager initialized - Project: {self.project_id}, Location: {self.location}, Budget: ${self.daily_budget}")
     
     def get_flash_model(self, **kwargs) -> ChatVertexAI:
         """Get cost-effective Gemini Flash model."""
@@ -201,6 +197,10 @@ class VertexAIManager:
             "alert_threshold_reached": self.daily_usage > (self.daily_budget * settings.cost_alert_threshold),
             "available_models": list(self.model_costs.keys())
         }
+    
+    def get_session_cost(self) -> float:
+        """Get current session cost."""
+        return self.daily_usage
 
 
 # Global instance
