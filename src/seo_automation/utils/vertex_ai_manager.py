@@ -201,6 +201,66 @@ class VertexAIManager:
     def get_session_cost(self) -> float:
         """Get current session cost."""
         return self.daily_usage
+    
+    async def generate_text(
+        self, 
+        prompt: str, 
+        model_name: str = "gemini-2.5-flash",
+        max_tokens: int = 1024,
+        temperature: float = 0.7
+    ) -> str:
+        """Generate text using Vertex AI with cost tracking."""
+        try:
+            # Get the appropriate LLM instance with higher output token limit
+            actual_max_tokens = max(1024, max_tokens * 2)  # Ensure adequate token allocation
+            llm = self.get_llm(model_name, 
+                             max_output_tokens=actual_max_tokens,
+                             temperature=temperature)
+            
+            # Generate response
+            response = llm.invoke(prompt)
+            
+            # Extract text content from response
+            result = ""
+            if hasattr(response, 'content'):
+                result = response.content
+            elif hasattr(response, 'text'):
+                result = response.text
+            else:
+                result = str(response)
+            
+            # Ensure we got actual content
+            if not result or len(result.strip()) == 0:
+                # Check response metadata for more details
+                if hasattr(response, 'response_metadata'):
+                    metadata = response.response_metadata
+                    finish_reason = metadata.get('finish_reason', 'unknown')
+                    print(f"WARNING: Empty response. Finish reason: {finish_reason}")
+                    if finish_reason == 'MAX_TOKENS':
+                        print(f"Model hit token limit. Consider increasing max_output_tokens.")
+                
+                # Return empty result but log the issue
+                print(f"WARNING: Generated empty content from model {model_name}")
+            
+            # Estimate token usage for cost tracking
+            # Use actual token counts if available
+            if hasattr(response, 'usage_metadata'):
+                usage = response.usage_metadata
+                input_tokens = usage.get('input_tokens', len(prompt) // 4)
+                output_tokens = usage.get('output_tokens', len(result) // 4)
+            else:
+                # Fallback to estimation
+                input_tokens = len(prompt) // 4
+                output_tokens = len(result) // 4
+            
+            # Track usage and cost
+            self.track_usage(model_name, input_tokens, output_tokens, "text_generation")
+            
+            return result
+            
+        except Exception as e:
+            logger.error("text_generation_failed", error=str(e))
+            raise
 
 
 # Global instance
