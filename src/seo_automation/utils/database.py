@@ -34,13 +34,20 @@ class BlogPost(Base):
     __tablename__ = "blog_posts"
     
     id = Column(Integer, primary_key=True)
-    blog_id = Column(Integer, nullable=False)  # Foreign key to blogs
+    blog_id = Column(Integer, nullable=True)  # Foreign key to blogs (optional)
     url = Column(String, unique=True, nullable=False)
     title = Column(String, nullable=False)
     content_summary = Column(Text)
     author = Column(String)
-    publish_date = Column(DateTime)
+    publication_date = Column(String)  # Store as string initially
+    word_count = Column(Integer, default=0)
+    has_comments = Column(Boolean, default=False)
+    tags = Column(JSON)  # Store as JSON array
+    comment_worthiness_score = Column(Integer, default=0)
+    engagement_potential = Column(String, default='low')  # low, medium, high
     analysis_data = Column(JSON)
+    analyzed_at = Column(DateTime)
+    status = Column(String, default='discovered')  # discovered, analyzed, processed
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

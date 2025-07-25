@@ -10,5 +10,6 @@ This module contains all the specialized CrewAI agents for SEO automation:
 
 from .base_agent import BaseAgent
 from .blog_researcher import BlogResearcher
+from .content_analyzer import ContentAnalyzer
 
-__all__ = ['BaseAgent', 'BlogResearcher']
+__all__ = ["BaseAgent", "BlogResearcher", "ContentAnalyzer"]
