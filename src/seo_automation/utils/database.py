@@ -71,6 +71,24 @@ class CostTracking(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class AgentExecution(Base):
+    """Agent execution tracking table."""
+    __tablename__ = "agent_executions"
+    
+    id = Column(Integer, primary_key=True)
+    agent_name = Column(String, nullable=False)
+    task_description = Column(Text, nullable=False)
+    context_data = Column(JSON)
+    model_name = Column(String, nullable=False)
+    started_at = Column(DateTime, nullable=False)
+    completed_at = Column(DateTime)
+    status = Column(String, nullable=False)  # running, completed, failed
+    result_data = Column(JSON)
+    cost = Column(Float)
+    tokens_used = Column(Integer)
+    execution_time = Column(Float)  # seconds
+
+
 class DatabaseManager:
     """Database connection and operations manager."""
     

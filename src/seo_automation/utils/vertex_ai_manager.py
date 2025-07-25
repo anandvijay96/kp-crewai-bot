@@ -69,6 +69,24 @@ class VertexAIManager:
         
         return ChatVertexAI(**default_params)
     
+    def get_llm(self, model_name: str = "gemini-2.0-flash-exp", **kwargs) -> ChatVertexAI:
+        """Get LLM instance by model name for CrewAI agents."""
+        
+        # Map newer model names to available models
+        model_mapping = {
+            "gemini-2.0-flash-exp": "gemini-2.5-flash",
+            "gemini-2.5-flash": "gemini-2.5-flash",
+            "gemini-1.5-flash": "gemini-1.5-flash-001",
+            "gemini-1.5-pro": "gemini-1.5-pro-001"
+        }
+        
+        mapped_model = model_mapping.get(model_name, "gemini-2.5-flash")
+        
+        if "flash" in mapped_model:
+            return self.get_flash_model(model_name=mapped_model, **kwargs)
+        else:
+            return self.get_pro_model(model_name=mapped_model, **kwargs)
+    
     def should_use_pro_model(self, task_complexity: str = "routine") -> bool:
         """Determine if Pro model should be used based on budget and complexity."""
         # Reset daily usage if new day
