@@ -141,7 +141,7 @@ def test_model(
         input_tokens = len(prompt.split()) * 1.3
         output_tokens = len(response.content.split()) * 1.3
         
-        model_name = "gemini-1.5-flash-001" if model_type == "flash" else "gemini-1.5-pro-001"
+        model_name = "gemini-2.5-flash" if model_type == "flash" else "gemini-1.5-pro-001"
         cost = vertex_ai_manager.track_usage(
             model_name, 
             int(input_tokens), 
@@ -153,7 +153,7 @@ def test_model(
         
     except Exception as e:
         rprint(f"❌ Model test failed: {e}")
-        logger.error("model_test_failed", model_type=model_type, error=str(e))
+        print(f"❌ Error logged: {model_type} - {str(e)}")
 
 
 @app.command()

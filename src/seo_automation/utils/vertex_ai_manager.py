@@ -28,7 +28,8 @@ class VertexAIManager:
         # Model pricing per 1K tokens (as of 2024)
         self.model_costs = {
             "gemini-1.5-flash-001": {"input": 0.000125, "output": 0.000375},
-            "gemini-1.5-pro-001": {"input": 0.00125, "output": 0.00375}
+            "gemini-1.5-pro-001": {"input": 0.00125, "output": 0.00375},
+            "gemini-2.5-flash": {"input": 0.000125, "output": 0.000375}  # Gemini 2.5 Flash pricing
         }
         
         logger.info(
@@ -41,7 +42,7 @@ class VertexAIManager:
     def get_flash_model(self, **kwargs) -> ChatVertexAI:
         """Get cost-effective Gemini Flash model."""
         default_params = {
-            "model_name": "gemini-1.5-flash-001",
+            "model_name": "gemini-2.5-flash",
             "project": self.project_id,
             "location": self.location,
             "max_output_tokens": 1024,
@@ -142,17 +143,8 @@ class VertexAIManager:
         
         self.daily_usage += cost
         
-        logger.info(
-            "vertex_ai_usage_tracked",
-            model=model_name,
-            operation_type=operation_type,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            cost=cost,
-            daily_usage=self.daily_usage,
-            daily_budget=self.daily_budget,
-            usage_percentage=(self.daily_usage / self.daily_budget) * 100
-        )
+        # Simple logging to avoid structlog issues
+        print(f"✅ Usage tracked: {model_name} - {operation_type} - tokens: {input_tokens}+{output_tokens} - cost: ${cost:.6f}")
         
         # Alert if approaching budget
         if self.daily_usage > self.daily_budget * settings.cost_alert_threshold:

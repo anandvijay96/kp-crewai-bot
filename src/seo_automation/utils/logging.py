@@ -31,9 +31,7 @@ def setup_logging() -> None:
         wrapper_class=structlog.make_filtering_bound_logger(
             min_level=30 if settings.log_level.upper() == "WARNING" else 20 if settings.log_level.upper() == "INFO" else 10
         ),
-        logger_factory=structlog.WriteLoggerFactory(
-            file=open(log_dir / "application.log", "a", encoding="utf-8")
-        ),
+        logger_factory=structlog.PrintLoggerFactory(),
         cache_logger_on_first_use=False,
     )
     
