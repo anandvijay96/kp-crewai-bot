@@ -97,6 +97,68 @@ class EnhancedBlogResearcherAgent(BaseSEOAgent):
             'spam_safety': 0.10     # Spam risk and safety assessment
         }
     
+    def research_blogs(self, research_params: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Public method to research blogs based on parameters.
+        This method provides the interface expected by the API.
+        
+        Args:
+            research_params: Dictionary containing:
+                - keywords: List of keywords to search for
+                - max_blogs: Maximum number of blogs to return
+                - quality_threshold: Minimum quality score (0-1)
+                - target_domains: Optional list of domains to focus on
+                - exclude_domains: Optional list of domains to exclude
+        
+        Returns:
+            Dictionary containing:
+                - blogs: List of discovered and analyzed blogs
+                - total_discovered: Total number of blogs found
+                - cost: Estimated cost of the research
+                - execution_time: Time taken for research
+        """
+        try:
+            # Convert keywords to string if it's a list
+            if isinstance(research_params.get('keywords', []), list):
+                keywords_str = ' '.join(research_params['keywords'])
+            else:
+                keywords_str = research_params.get('keywords', '')
+            
+            # Prepare context for task execution
+            context = {
+                'keywords': keywords_str,
+                'max_results': research_params.get('max_blogs', 10),
+                'quality_threshold': research_params.get('quality_threshold', 0.6) * 100,  # Convert to 0-100 scale
+                'target_domains': research_params.get('target_domains', []),
+                'exclude_domains': research_params.get('exclude_domains', [])
+            }
+            
+            # Create task description
+            task = f"Research and discover high-quality blogs for keywords: {keywords_str}"
+            
+            # Execute the research task
+            result = self.execute(task, context)
+            
+            if result.get('success', False):
+                task_result = result.get('result', {})
+                
+                # Format the response for API compatibility
+                return {
+                    'blogs': task_result.get('qualified_blogs', []),
+                    'total_discovered': task_result.get('discovery_stats', {}).get('total_discovered', 0),
+                    'cost': result.get('execution_time', 0) * 0.01,  # Estimate cost based on time
+                    'execution_time': result.get('execution_time', 0),
+                    'research_report': task_result.get('research_report', {}),
+                    'recommendations': task_result.get('recommendations', []),
+                    'quality_metrics': task_result.get('quality_metrics', {})
+                }
+            else:
+                raise Exception(f"Blog research task failed: {result.get('error', 'Unknown error')}")
+                
+        except Exception as e:
+            self.logger.error(f"Blog research failed: {e}")
+            raise
+
     def _execute_task(self, task: str, context: Dict[str, Any] = None) -> Any:
         """
         Execute enhanced blog research task with Phase 1 tools integration.
