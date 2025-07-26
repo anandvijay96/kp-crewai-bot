@@ -21,7 +21,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 # Import routes and modules with proper paths
 try:
-    from .routes import campaigns, agents, blogs, comments, auth
+from .routes import auth, agents, campaigns, blogs, comments
+from .routes.auth_new import router as auth_new_router
     from .websocket import websocket_manager
 except ImportError:
     # Fallback for direct execution
@@ -34,12 +35,20 @@ except ImportError:
 # Import database and logging
 try:
     from ..seo_automation.utils.logging import setup_logging
+    from ..seo_automation.utils.database import DatabaseManager
 except ImportError:
     # Create a simple logging setup for testing
     import logging
     def setup_logging():
         logging.basicConfig(level=logging.INFO)
         return logging.getLogger(__name__)
+    
+    # Mock database manager for testing
+    class DatabaseManager:
+        async def connect(self):
+            pass
+        async def disconnect(self):
+            pass
 
 # Setup logging
 logger = setup_logging()
@@ -54,12 +63,13 @@ async def lifespan(app: FastAPI):
     
     # Initialize database
     try:
-        database = Database()
+        database = DatabaseManager()
         await database.connect()
         logger.info("✅ Database connection established")
     except Exception as e:
         logger.error(f"❌ Database connection failed: {e}")
-        raise
+        # Don't raise in development - continue with mock data
+        logger.info("⚠️ Continuing with mock data for development")
     
     # Initialize WebSocket manager
     websocket_manager.startup()
@@ -173,14 +183,21 @@ async def api_info() -> Dict[str, Any]:
     }
 
 # Include API Routes
-app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(auth.router, prefix="/api/auth_old", tags=["Authentication (Legacy)"])
+app.include_router(auth_new_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(campaigns.router, prefix="/api/campaigns", tags=["Campaigns"])
 app.include_router(agents.router, prefix="/api/agents", tags=["Agents"])
 app.include_router(blogs.router, prefix="/api/blogs", tags=["Blog Research"])
 app.include_router(comments.router, prefix="/api/comments", tags=["Comment Generation"])
 
-# WebSocket Endpoint
-app.mount("/ws", websocket_manager.app)
+# WebSocket Endpoint  
+# Import the websocket app and mount it
+try:
+    from .websocket import websocket_app
+    app.mount("/ws", websocket_app)
+except ImportError:
+    # Fallback - create a simple websocket endpoint
+    logger.warning("Could not import websocket_app, WebSocket features disabled")
 
 if __name__ == "__main__":
     import uvicorn

@@ -3,16 +3,40 @@ Database models and utilities (basic setup for future phases)
 """
 from typing import Optional, Dict, Any
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Float, Boolean, JSON
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Float, Boolean, JSON, Enum, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import structlog
+import enum
 
 from ..config.settings import settings
 
 logger = structlog.get_logger(__name__)
 
 Base = declarative_base()
+
+
+class UserRole(enum.Enum):
+    """User roles enumeration."""
+    USER = "user"
+    ADMIN = "admin"
+    MODERATOR = "moderator"
+
+
+class User(Base):
+    """User authentication table."""
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    full_name = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    role = Column(Enum(UserRole), default=UserRole.USER)
+    permissions = Column(JSON)  # Store user-specific permissions
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_login = Column(DateTime)
 
 
 class Blog(Base):
@@ -25,6 +49,7 @@ class Blog(Base):
     domain_authority = Column(Integer)
     category = Column(String)
     status = Column(String, default="active")
+    analysis_metadata = Column(JSON)  # Store analysis results and other metadata
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -102,11 +127,22 @@ class DatabaseManager:
     def __init__(self):
         self.engine = None
         self.session_maker = None
+        self.connection_available = False
         
         if settings.database_url:
-            self.engine = create_engine(settings.database_url)
-            self.session_maker = sessionmaker(bind=self.engine)
-            logger.info("database_manager_initialized", url=settings.database_url)
+            try:
+                self.engine = create_engine(settings.database_url)
+                # Test connection
+                with self.engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                self.session_maker = sessionmaker(bind=self.engine)
+                self.connection_available = True
+                logger.info("database_manager_initialized", url=settings.database_url)
+            except Exception as e:
+                logger.warning("database_connection_failed", error=str(e), url=settings.database_url)
+                self.engine = None
+                self.session_maker = None
+                self.connection_available = False
         else:
             logger.warning("no_database_url_configured")
     

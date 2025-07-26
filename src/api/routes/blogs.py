@@ -30,7 +30,7 @@ try:
     src_dir = os.path.join(current_dir, '..', '..', '..')
     sys.path.append(src_dir)
     
-    from seo_automation.agents.enhanced_blog_researcher import EnhancedBlogResearcherAgent
+    from ...seo_automation.agents.enhanced_blog_researcher import EnhancedBlogResearcherAgent
     logger.info("✅ Successfully imported EnhancedBlogResearcherAgent")
 except ImportError as e:
     logger.warning(f"⚠️ Could not import real blog researcher agent: {e}. Using mock implementation.")

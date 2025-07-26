@@ -57,6 +57,18 @@ class EnhancedBlogResearcherAgent(BaseSEOAgent):
             model_name="gemini-2.0-flash-exp"
         )
         
+        # Initialize database session with graceful handling
+        self.db_session = None
+        try:
+            if db_manager.connection_available:
+                self.db_session = db_manager.get_session()
+                self.logger.info("Database session initialized successfully")
+            else:
+                self.logger.warning("Database not available - continuing without persistence")
+        except Exception as e:
+            self.logger.warning(f"Failed to initialize database session: {e} - continuing without persistence")
+            self.db_session = None
+        
         # Search configuration
         self.search_templates = {
             'blog_discovery': [
@@ -611,7 +623,7 @@ class EnhancedBlogResearcherAgent(BaseSEOAgent):
                     # Update existing blog with enhanced data
                     existing_blog.domain_authority = blog_data.get('comprehensive_score', 0)
                     existing_blog.updated_at = datetime.utcnow()
-                    existing_blog.metadata = json.dumps({
+                    existing_blog.analysis_metadata = json.dumps({
                         'validation_result': blog_data.get('validation_result', {}),
                         'content_analysis': blog_data.get('content_analysis', {}),
                         'seo_analysis': blog_data.get('seo_analysis', {})
@@ -624,7 +636,7 @@ class EnhancedBlogResearcherAgent(BaseSEOAgent):
                         domain_authority=blog_data.get('comprehensive_score', 0),
                         category='tech',
                         status='active',
-                        metadata=json.dumps({
+                        analysis_metadata=json.dumps({
                             'validation_result': blog_data.get('validation_result', {}),
                             'content_analysis': blog_data.get('content_analysis', {}),
                             'seo_analysis': blog_data.get('seo_analysis', {}),

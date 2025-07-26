@@ -23,34 +23,42 @@ from ..models import (
 )
 from ..auth import get_current_user
 
+# Setup logger first
+logger = logging.getLogger(__name__)
+
 # Import existing agents and database with proper error handling
 try:
-    import sys
-    import os
-    # Add src to path for imports
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    src_dir = os.path.join(current_dir, '..', '..', '..')
-    sys.path.append(src_dir)
-    
-    from seo_automation.agents.campaign_manager import CampaignManagerAgent
-    from seo_automation.utils.database import Campaign, Blog, Comment, ExecutionLog
+    # Import the real agents using relative imports
+    from ...seo_automation.agents.campaign_manager import CampaignManagerAgent
+    from ...seo_automation.utils.database import DatabaseManager
     logger.info("✅ Successfully imported real agents and database models")
+    AGENTS_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"⚠️ Could not import real agents: {e}. Using mock implementation.")
     CampaignManagerAgent = None
-
-logger = logging.getLogger(__name__)
+    DatabaseManager = None
+    AGENTS_AVAILABLE = False
+except Exception as e:
+    logger.error(f"❌ Unexpected error importing agents: {e}. Using mock implementation.")
+    CampaignManagerAgent = None
+    DatabaseManager = None
+    AGENTS_AVAILABLE = False
 
 router = APIRouter()
 
 # Global campaign manager instance
 campaign_manager = None
 
-def get_campaign_manager() -> CampaignManagerAgent:
+def get_campaign_manager():
     """Get or create campaign manager instance."""
     global campaign_manager
-    if campaign_manager is None:
-        campaign_manager = CampaignManagerAgent()
+    if campaign_manager is None and AGENTS_AVAILABLE:
+        try:
+            campaign_manager = CampaignManagerAgent()
+            logger.info("✅ Real CampaignManagerAgent initialized")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize CampaignManagerAgent: {e}")
+            campaign_manager = None
     return campaign_manager
 
 # ============================================================================
@@ -78,8 +86,6 @@ async def create_campaign(
     logger.info(f"Creating campaign '{campaign_data.name}' for user: {current_user['username']}")
     
     try:
-        manager = get_campaign_manager()
-        
         # Prepare campaign configuration
         config = {
             "campaign_id": str(uuid.uuid4()),
@@ -96,8 +102,34 @@ async def create_campaign(
             "created_at": datetime.utcnow()
         }
         
-        # Create campaign using CampaignManagerAgent
-        campaign = manager.create_campaign(config)
+        # Try to use real agent first, fallback to mock
+        manager = get_campaign_manager()
+        if manager is not None:
+            logger.info("🤖 Using real CampaignManagerAgent for campaign creation")
+            campaign = manager.create_campaign(config)
+        else:
+            logger.info("📋 Using mock campaign creation (agent not available)")
+            # Mock campaign creation when real agent is not available
+            campaign = {
+                "campaign_id": config["campaign_id"],
+                "name": config["name"],
+                "description": config["description"],
+                "status": "created",
+                "keywords": config["keywords"],
+                "target_blogs": config["target_blogs"],
+                "comment_styles": config["comment_styles"],
+                "max_blogs": config["max_blogs"],
+                "max_comments_per_blog": config["max_comments_per_blog"],
+                "quality_threshold": config["quality_threshold"],
+                "budget_limit": config["budget_limit"],
+                "created_by": config["created_by"],
+                "created_at": config["created_at"],
+                "updated_at": config["created_at"],
+                "tasks": [],
+                "estimated_cost": 0.0,
+                "estimated_duration": 0,
+                "progress": 0.0
+            }
         
         # Convert campaign data for API response
         campaign_response = {

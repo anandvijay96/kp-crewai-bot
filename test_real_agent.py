@@ -244,6 +244,17 @@ def run_comprehensive_test():
                 research_result = test_blog_research_simulation(agent_class, use_real_agent=True)
                 test_results['agent_research'] = True
                 print("✅ Real agent test successful!")
+                
+                # Test 3: Always test fallback mechanism to ensure it works
+                try:
+                    print("\n🔄 Testing fallback mechanism (even though real agent works)...")
+                    fallback_result = test_blog_research_simulation(None, use_real_agent=False)
+                    test_results['fallback_works'] = True
+                    print("✅ Fallback mechanism verified!")
+                except Exception as fallback_error:
+                    print(f"❌ Fallback test failed: {fallback_error}")
+                    test_results['fallback_works'] = False
+                    
             except Exception as e:
                 print(f"⚠️ Real agent failed, testing fallback: {e}")
                 research_result = test_blog_research_simulation(agent_class, use_real_agent=False)
