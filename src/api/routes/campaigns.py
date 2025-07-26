@@ -23,6 +23,7 @@ from ..models import (
 )
 from ..auth import get_current_user
 from ..services.campaign_service import CampaignService
+from ..services.integration_service import integration_service
 
 # Setup logger first
 logger = logging.getLogger(__name__)
@@ -432,13 +433,26 @@ async def start_campaign(
                 detail="Campaign not found"
             )
         
-        # Add background task for campaign execution
-        background_tasks.add_task(execute_campaign_background, campaign_id)
+        # Mock campaign configuration for integration service
+        campaign_config = {
+            "keywords": ["SEO", "digital marketing"],
+            "max_blogs": 5,
+            "max_comments_per_blog": 2,
+            "quality_threshold": 0.7
+        }
         
-        logger.info(f"Campaign started successfully: {campaign_id}")
+        # Start campaign execution with real-time updates
+        task_id = await integration_service.start_campaign_execution(
+            campaign_id=campaign_id,
+            config=campaign_config,
+            user_id=current_user["user_id"]
+        )
+        
+        logger.info(f"Campaign started successfully: {campaign_id} (Task ID: {task_id})")
         
         return BaseResponse(
-            message=f"Campaign {campaign_id} started successfully. Execution is running in the background."
+            message=f"Campaign {campaign_id} started successfully. Execution is running with real-time updates.",
+            **{"task_id": task_id}
         )
         
     except HTTPException:

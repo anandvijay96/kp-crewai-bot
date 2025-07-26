@@ -21,16 +21,24 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 # Import routes and modules with proper paths
 try:
-    from .routes import agents, campaigns, blogs, comments
+    from .routes import agents, campaigns, blogs, comments, tasks
     from .routes.auth_new import router as auth_router
-    from .websocket import websocket_manager
-except ImportError:
+    from .websocket import websocket_manager, websocket_app
+    logger.info("✅ All route modules imported successfully")
+except ImportError as e:
+    logger.error(f"❌ Failed to import route modules: {e}")
     # Fallback for direct execution
     import sys
     import os
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from routes import campaigns, agents, blogs, comments, auth
-    from websocket import websocket_manager
+    try:
+        from routes import campaigns, agents, blogs, comments
+        from routes.auth_new import router as auth_router
+        from websocket import websocket_manager, websocket_app
+        logger.info("✅ Route modules imported via fallback")
+    except ImportError as fallback_error:
+        logger.error(f"❌ Fallback import also failed: {fallback_error}")
+        raise
 
 # Import database and logging
 try:
@@ -170,13 +178,18 @@ async def api_info() -> Dict[str, Any]:
             "Comment Generation",
             "Quality Review",
             "Real-time Updates",
-            "Multi-Agent Coordination"
+            "Multi-Agent Coordination",
+            "Task Management",
+            "WebSocket Integration",
+            "User Authentication",
+            "Role-based Access Control"
         ],
         "endpoints": {
             "campaigns": "/api/campaigns",
             "agents": "/api/agents",
             "blogs": "/api/blogs",
             "comments": "/api/comments",
+            "tasks": "/api/tasks",
             "auth": "/api/auth",
             "websocket": "/ws"
         }
@@ -188,6 +201,7 @@ app.include_router(campaigns.router, prefix="/api/campaigns", tags=["Campaigns"]
 app.include_router(agents.router, prefix="/api/agents", tags=["Agents"])
 app.include_router(blogs.router, prefix="/api/blogs", tags=["Blog Research"])
 app.include_router(comments.router, prefix="/api/comments", tags=["Comment Generation"])
+app.include_router(tasks.router, prefix="/api/tasks", tags=["Task Management"])
 
 # WebSocket Endpoint  
 # Import the websocket app and mount it
