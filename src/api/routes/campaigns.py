@@ -22,6 +22,7 @@ from ..models import (
     CampaignStatus
 )
 from ..auth import get_current_user
+from ..services.campaign_service import CampaignService
 
 # Setup logger first
 logger = logging.getLogger(__name__)
@@ -83,12 +84,11 @@ async def create_campaign(
     Raises:
         HTTPException: If campaign creation fails
     """
-    logger.info(f"Creating campaign '{campaign_data.name}' for user: {current_user['username']}")
+    logger.info(f"Creating campaign '{campaign_data.name}' for user: {current_user['email']}")
     
     try:
         # Prepare campaign configuration
         config = {
-            "campaign_id": str(uuid.uuid4()),
             "name": campaign_data.name,
             "description": campaign_data.description,
             "keywords": campaign_data.keywords,
@@ -97,66 +97,16 @@ async def create_campaign(
             "max_blogs": campaign_data.max_blogs,
             "max_comments_per_blog": campaign_data.max_comments_per_blog,
             "quality_threshold": campaign_data.quality_threshold,
-            "budget_limit": campaign_data.budget_limit,
-            "created_by": current_user["username"],
-            "created_at": datetime.utcnow()
+            "budget_limit": campaign_data.budget_limit
         }
         
-        # Try to use real agent first, fallback to mock
-        manager = get_campaign_manager()
-        if manager is not None:
-            logger.info("🤖 Using real CampaignManagerAgent for campaign creation")
-            campaign = manager.create_campaign(config)
-        else:
-            logger.info("📋 Using mock campaign creation (agent not available)")
-            # Mock campaign creation when real agent is not available
-            campaign = {
-                "campaign_id": config["campaign_id"],
-                "name": config["name"],
-                "description": config["description"],
-                "status": "created",
-                "keywords": config["keywords"],
-                "target_blogs": config["target_blogs"],
-                "comment_styles": config["comment_styles"],
-                "max_blogs": config["max_blogs"],
-                "max_comments_per_blog": config["max_comments_per_blog"],
-                "quality_threshold": config["quality_threshold"],
-                "budget_limit": config["budget_limit"],
-                "created_by": config["created_by"],
-                "created_at": config["created_at"],
-                "updated_at": config["created_at"],
-                "tasks": [],
-                "estimated_cost": 0.0,
-                "estimated_duration": 0,
-                "progress": 0.0
-            }
+        # Use CampaignService to create campaign in database
+        campaign = CampaignService.create_campaign(config, current_user["id"])
         
-        # Convert campaign data for API response
-        campaign_response = {
-            "id": campaign.get("campaign_id"),
-            "name": campaign.get("name"),
-            "description": campaign.get("description"),
-            "status": campaign.get("status", "created"),
-            "keywords": campaign.get("keywords", []),
-            "target_blogs": campaign.get("target_blogs", []),
-            "comment_styles": campaign.get("comment_styles", []),
-            "max_blogs": campaign.get("max_blogs", 10),
-            "max_comments_per_blog": campaign.get("max_comments_per_blog", 3),
-            "quality_threshold": campaign.get("quality_threshold", 0.7),
-            "budget_limit": campaign.get("budget_limit"),
-            "created_by": campaign.get("created_by"),
-            "created_at": campaign.get("created_at", datetime.utcnow()).isoformat(),
-            "updated_at": campaign.get("updated_at", datetime.utcnow()).isoformat(),
-            "tasks": campaign.get("tasks", []),
-            "estimated_cost": campaign.get("estimated_cost", 0.0),
-            "estimated_duration": campaign.get("estimated_duration", 0),
-            "progress": campaign.get("progress", 0.0)
-        }
-        
-        logger.info(f"Campaign created successfully: {campaign_response['id']}")
+        logger.info(f"Campaign created successfully: {campaign['id']}")
         
         return CampaignResponse(
-            campaign=campaign_response,
+            campaign=campaign,
             message="Campaign created successfully"
         )
         
