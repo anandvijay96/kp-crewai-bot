@@ -21,8 +21,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 # Import routes and modules with proper paths
 try:
-    from .routes import auth, agents, campaigns, blogs, comments
-    from .routes.auth_new import router as auth_new_router
+    from .routes import agents, campaigns, blogs, comments
+    from .routes.auth_new import router as auth_router
     from .websocket import websocket_manager
 except ImportError:
     # Fallback for direct execution
@@ -183,8 +183,7 @@ async def api_info() -> Dict[str, Any]:
     }
 
 # Include API Routes
-app.include_router(auth.router, prefix="/api/auth_old", tags=["Authentication (Legacy)"])
-app.include_router(auth_new_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(campaigns.router, prefix="/api/campaigns", tags=["Campaigns"])
 app.include_router(agents.router, prefix="/api/agents", tags=["Agents"])
 app.include_router(blogs.router, prefix="/api/blogs", tags=["Blog Research"])

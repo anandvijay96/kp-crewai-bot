@@ -35,8 +35,8 @@ const STORAGE_KEYS = {
   TOKEN_EXPIRY: 'kp_token_expiry',
 };
 
-// API configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+// API configuration - Vite uses import.meta.env instead of process.env
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
 
 /**

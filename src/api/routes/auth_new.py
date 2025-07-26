@@ -16,7 +16,7 @@ from ..auth.jwt_handler import JWTHandler, get_current_user, get_admin_user, ACC
 from ..services.user_service import UserService
 from typing import Dict, Any, List
 
-router = APIRouter(prefix="/auth", tags=["authentication"])
+router = APIRouter(tags=["authentication"])
 
 @router.post("/register", response_model=ApiResponse)
 async def register(user_data: UserCreate):

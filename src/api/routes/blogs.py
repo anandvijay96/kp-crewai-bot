@@ -17,6 +17,7 @@ from ..models import (
     PaginationParams
 )
 from ..auth import get_current_user, get_current_user_optional
+from ..services.blog_research_service import BlogResearchService
 
 # Initialize logger first
 logger = logging.getLogger(__name__)
@@ -84,7 +85,7 @@ async def research_blogs(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> BlogResearchResponse:
     """
-    Research and discover blogs using real EnhancedBlogResearcherAgent.
+    Research and discover blogs using BlogResearchService.
     
     Args:
         request: Blog research parameters
@@ -93,92 +94,33 @@ async def research_blogs(
     Returns:
         BlogResearchResponse: Discovered blogs with metadata
     """
-    logger.info(f"🚀 Starting real blog research for keywords: {request.keywords}")
+    logger.info(f"Starting blog research for keywords: {request.keywords}")
     
     try:
-        if EnhancedBlogResearcherAgent is None:
-            logger.warning("⚠️ EnhancedBlogResearcherAgent not available, using mock data")
-            # Fallback to mock data if agent not available
-            mock_blogs = [
-                {
-                    "url": "https://searchengineland.com/category/seo",
-                    "title": "Search Engine Land - SEO News (Mock)",
-                    "description": "Latest SEO news, tips and strategies for search engine optimization",
-                    "domain": "searchengineland.com",
-                    "authority_score": 0.94,
-                    "quality_score": 0.91,
-                    "comment_opportunity": True,
-                    "seo_metrics": {
-                        "domain_authority": 89,
-                        "page_authority": 76,
-                        "traffic_estimate": 2500000,
-                        "backlinks": 450000
-                    },
-                    "discovered_at": datetime.utcnow()
-                }
-            ]
-            
-            return BlogResearchResponse(
-                blogs=mock_blogs,
-                total_discovered=len(mock_blogs),
-                quality_filtered=len(mock_blogs),
-                keywords_used=request.keywords,
-                execution_time=2.1,
-                cost=0.15,
-                message="Blog research completed (mock data - agent not available)"
-            )
-        
-        # Use the real EnhancedBlogResearcherAgent
-        logger.info(f"📋 Using real EnhancedBlogResearcherAgent for research...")
-        
-        # Create agent instance
-        blog_researcher = EnhancedBlogResearcherAgent()
-        
         # Prepare research parameters
         research_params = {
             "keywords": request.keywords,
-            "max_blogs": request.max_results,
+            "max_results": request.max_results,
             "quality_threshold": request.quality_threshold,
             "target_domains": request.target_domains or [],
             "exclude_domains": request.exclude_domains or []
         }
         
-        # Execute blog research using real agent
-        start_time = datetime.utcnow()
-        research_result = blog_researcher.research_blogs(research_params)
-        end_time = datetime.utcnow()
-        execution_time = (end_time - start_time).total_seconds()
-        
-        logger.info(f"✅ Real blog research completed in {execution_time:.2f} seconds")
-        
-        # Convert agent results to API response format
-        discovered_blogs = []
-        if research_result and 'blogs' in research_result:
-            for blog in research_result['blogs']:
-                discovered_blogs.append({
-                    "url": blog.get('url', ''),
-                    "title": blog.get('title', ''),
-                    "description": blog.get('description', ''),
-                    "domain": blog.get('domain', ''),
-                    "authority_score": blog.get('authority_score', 0.0),
-                    "quality_score": blog.get('quality_score', 0.0),
-                    "comment_opportunity": blog.get('comment_opportunity', False),
-                    "seo_metrics": blog.get('seo_metrics', {}),
-                    "discovered_at": datetime.utcnow()
-                })
+        # Use BlogResearchService for research and database persistence
+        result = BlogResearchService.research_blogs(research_params, current_user["id"])
         
         return BlogResearchResponse(
-            blogs=discovered_blogs,
-            total_discovered=research_result.get('total_discovered', len(discovered_blogs)),
-            quality_filtered=len(discovered_blogs),
-            keywords_used=request.keywords,
-            execution_time=execution_time,
-            cost=research_result.get('cost', 0.0),
-            message="Blog research completed successfully using real agent"
+            blogs=result["blogs"],
+            total_discovered=result["total_discovered"],
+            quality_filtered=result["quality_filtered"],
+            keywords_used=result["keywords_used"],
+            execution_time=result["execution_time"],
+            cost=result["cost"],
+            message="Blog research completed successfully"
         )
         
     except Exception as e:
-        logger.error(f"❌ Real blog research error: {e}")
+        logger.error(f"Blog research error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to research blogs: {str(e)}"

@@ -64,8 +64,8 @@ const STORAGE_KEYS = {
   TOKEN_EXPIRY: 'kp_token_expiry',
 };
 
-// API base URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+// API base URL - Vite uses import.meta.env instead of process.env
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 /**
  * Custom hook to use the auth context

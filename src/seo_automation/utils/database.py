@@ -18,9 +18,9 @@ Base = declarative_base()
 
 class UserRole(enum.Enum):
     """User roles enumeration."""
-    USER = "user"
-    ADMIN = "admin"
-    MODERATOR = "moderator"
+    user = "user"
+    admin = "admin"
+    moderator = "moderator"
 
 
 class User(Base):
@@ -31,7 +31,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     full_name = Column(String, nullable=False)
     hashed_password = Column(String, nullable=False)
-    role = Column(Enum(UserRole), default=UserRole.USER)
+    role = Column(Enum(UserRole), default=UserRole.user)
     permissions = Column(JSON)  # Store user-specific permissions
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)

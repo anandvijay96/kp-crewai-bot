@@ -53,7 +53,7 @@ class UserService:
             default_permissions = ROLE_PERMISSIONS.get(user_data.role, [])
             
             # Map API UserRole to Database UserRole
-            db_role = getattr(DbUserRole, user_data.role.value.upper())
+            db_role = getattr(DbUserRole, user_data.role.value)
             
             # Create user
             db_user = User(

@@ -1,6 +1,8 @@
-import { Bell, Moon, Sun, User } from 'lucide-react'
+import { Bell, Moon, Sun, User, LogOut, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useTheme } from '@/hooks/useTheme'
+import { useAuth } from '@/contexts/AuthContext'
+import { useState } from 'react'
 
 export function Header() {
   const { theme, setTheme, isDark } = useTheme()
@@ -66,16 +68,86 @@ export function Header() {
             </Button>
 
             {/* User Menu */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-9 w-9 p-0"
-            >
-              <User className="h-4 w-4" />
-            </Button>
+            <UserMenu />
           </div>
         </div>
       </div>
     </header>
   )
+}
+
+/**
+ * User Menu Component with dropdown
+ */
+function UserMenu() {
+  const { user, logout } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center space-x-2 h-9 px-3"
+      >
+        <User className="h-4 w-4" />
+        {user && (
+          <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300">
+            {user.full_name}
+          </span>
+        )}
+      </Button>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+          <div className="py-1">
+            {/* User Info */}
+            <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                {user?.full_name}
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {user?.email}
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 capitalize">
+                Role: {user?.role}
+              </p>
+            </div>
+            
+            {/* Menu Items */}
+            <button 
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+              onClick={() => setIsOpen(false)}
+            >
+              <Settings className="h-4 w-4" />
+              <span>Settings</span>
+            </button>
+            
+            <button 
+              className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Backdrop to close dropdown */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+    </div>
+  );
 }

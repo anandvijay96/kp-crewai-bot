@@ -29,6 +29,7 @@ dependencies = [
     "readability==0.3.1",
     "textstat>=0.7.8",
     "nltk>=3.9.1",
+    "pydantic[email]>=2.11.7",
 ]
 
 [project.optional-dependencies]
