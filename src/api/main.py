@@ -21,8 +21,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 # Import routes and modules with proper paths
 try:
-from .routes import auth, agents, campaigns, blogs, comments
-from .routes.auth_new import router as auth_new_router
+    from .routes import auth, agents, campaigns, blogs, comments
+    from .routes.auth_new import router as auth_new_router
     from .websocket import websocket_manager
 except ImportError:
     # Fallback for direct execution
