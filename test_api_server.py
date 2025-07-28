@@ -390,6 +390,184 @@ async def logout(current_user: dict = Depends(get_current_user)):
         message="Logout successful"
     )
 
+# Dashboard endpoint
+@app.get("/api/dashboard/data", response_model=ApiResponse)
+async def get_dashboard_data(current_user: dict = Depends(get_current_user)):
+    """Dashboard data endpoint."""
+    logger.info(f"Fetching dashboard data for user: {current_user['email']}")
+    
+    try:
+        # Return mock data matching the frontend interface
+        dashboard_data = {
+            "activeCampaigns": 12,
+            "blogsDiscovered": 2847,
+            "commentsGenerated": 1234,
+            "successRate": 87.5,
+            "recentCampaigns": [
+                {"name": "SEO Campaign - Digital Marketing", "status": "Active", "blogs": 245},
+                {"name": "Content Marketing Outreach", "status": "Active", "blogs": 189},
+                {"name": "Tech Blog Analysis Q1", "status": "Paused", "blogs": 156}
+            ],
+            "topBlogs": [
+                {"title": "Advanced SEO Strategies for 2024", "domain": "searchengineland.com", "score": 95, "comments": 3},
+                {"title": "Building Scalable SaaS Products", "domain": "medium.com", "score": 92, "comments": 2},
+                {"title": "Machine Learning Best Practices", "domain": "towardsdatascience.com", "score": 89, "comments": 1}
+            ]
+        }
+        
+        return ApiResponse(
+            success=True,
+            message="Dashboard data retrieved successfully",
+            data=dashboard_data
+        )
+        
+    except Exception as e:
+        logger.error(f"Dashboard data error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+# Blog Research endpoint
+@app.post("/api/blogs/research", response_model=ApiResponse)
+async def research_blogs(request: dict, current_user: dict = Depends(get_current_user)):
+    """Blog research endpoint."""
+    logger.info(f"Blog research for keywords: {request.get('keywords')} by user: {current_user['email']}")
+    
+    try:
+        keywords = request.get('keywords', [])
+        min_authority = request.get('minAuthority', 30)
+        
+        # Mock blog data that would be discovered based on keywords
+        mock_blogs_database = [
+            # SEO Blogs
+            {
+                "title": "Advanced SEO Strategies for 2024: Complete Guide",
+                "domain": "searchengineland.com",
+                "url": "https://searchengineland.com/advanced-seo-strategies-2024",
+                "domain_authority": 89,
+                "page_authority": 76,
+                "authority": 89,
+                "keywords": ["SEO", "search engine optimization", "digital marketing"],
+                "traffic_estimate": 2500000,
+                "comment_opportunity": True,
+                "quality_score": 0.92
+            },
+            {
+                "title": "The Future of Content Marketing in Digital Strategy",
+                "domain": "contentmarketinginstitute.com",
+                "url": "https://contentmarketinginstitute.com/future-content-marketing",
+                "domain_authority": 84,
+                "page_authority": 68,
+                "authority": 84,
+                "keywords": ["content marketing", "digital strategy", "marketing automation"],
+                "traffic_estimate": 1800000,
+                "comment_opportunity": True,
+                "quality_score": 0.88
+            },
+            {
+                "title": "Social Media Marketing Trends and Best Practices",
+                "domain": "socialmediaexaminer.com",
+                "url": "https://socialmediaexaminer.com/social-media-marketing-trends",
+                "domain_authority": 82,
+                "page_authority": 71,
+                "authority": 82,
+                "keywords": ["social media marketing", "social media advertising", "SMM"],
+                "traffic_estimate": 1600000,
+                "comment_opportunity": True,
+                "quality_score": 0.85
+            },
+            {
+                "title": "Email Marketing Automation: A Complete Guide",
+                "domain": "mailchimp.com",
+                "url": "https://mailchimp.com/resources/email-marketing-automation",
+                "domain_authority": 91,
+                "page_authority": 73,
+                "authority": 91,
+                "keywords": ["email marketing", "marketing automation", "email campaigns"],
+                "traffic_estimate": 3200000,
+                "comment_opportunity": True,
+                "quality_score": 0.94
+            },
+            {
+                "title": "Digital Marketing Analytics and ROI Measurement",
+                "domain": "hubspot.com",
+                "url": "https://blog.hubspot.com/marketing/digital-marketing-analytics",
+                "domain_authority": 93,
+                "page_authority": 78,
+                "authority": 93,
+                "keywords": ["digital marketing", "analytics", "ROI", "marketing metrics"],
+                "traffic_estimate": 4100000,
+                "comment_opportunity": True,
+                "quality_score": 0.96
+            },
+            {
+                "title": "B2B Social Media Advertising Strategies",
+                "domain": "linkedinbusiness.com",
+                "url": "https://business.linkedin.com/marketing-solutions/blog/b2b-social-advertising",
+                "domain_authority": 87,
+                "page_authority": 65,
+                "authority": 87,
+                "keywords": ["social media advertising", "B2B marketing", "LinkedIn advertising"],
+                "traffic_estimate": 2800000,
+                "comment_opportunity": True,
+                "quality_score": 0.89
+            },
+            # Lower authority blogs (should be filtered out)
+            {
+                "title": "Basic SEO Tips for Beginners",
+                "domain": "smallblogexample.com",
+                "url": "https://smallblogexample.com/seo-tips",
+                "domain_authority": 25,
+                "page_authority": 28,
+                "authority": 25,
+                "keywords": ["SEO", "beginner SEO"],
+                "traffic_estimate": 15000,
+                "comment_opportunity": False,
+                "quality_score": 0.45
+            }
+        ]
+        
+        # Filter blogs based on keywords and authority
+        filtered_blogs = []
+        for blog in mock_blogs_database:
+            # Check if any of the search keywords match blog keywords
+            keyword_match = any(
+                any(search_kw.lower() in blog_kw.lower() for blog_kw in blog["keywords"])
+                for search_kw in keywords
+            )
+            
+            # Filter by authority and keyword match
+            if keyword_match and blog["domain_authority"] >= min_authority and blog["page_authority"] >= min_authority:
+                filtered_blogs.append(blog)
+        
+        # Sort by authority score (highest first)
+        filtered_blogs.sort(key=lambda x: x["domain_authority"], reverse=True)
+        
+        logger.info(f"Found {len(filtered_blogs)} qualified blogs for keywords: {keywords}")
+        
+        return ApiResponse(
+            success=True,
+            message=f"Found {len(filtered_blogs)} qualified blogs with authority >= {min_authority}",
+            data={
+                "blogs": filtered_blogs,
+                "total_discovered": len(mock_blogs_database),
+                "qualified_blogs": len(filtered_blogs),
+                "filter_criteria": {
+                    "keywords": keywords,
+                    "min_domain_authority": min_authority,
+                    "min_page_authority": min_authority
+                }
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Blog research error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
 @app.get("/api/test/protected")
 async def protected_endpoint(current_user: dict = Depends(get_current_user)):
     """Test protected endpoint."""

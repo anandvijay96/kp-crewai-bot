@@ -1,39 +1,79 @@
 import { Activity, TrendingUp, MessageSquare, Target } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 
-// Mock data for demonstration
-const stats = [
-  {
-    title: 'Active Campaigns',
-    value: '12',
-    change: '+2 from last month',
-    icon: Target,
-    color: 'text-blue-600',
-  },
-  {
-    title: 'Blogs Discovered',
-    value: '2,847',
-    change: '+15% from last week',
-    icon: Activity,
-    color: 'text-green-600',
-  },
-  {
-    title: 'Comments Generated',
-    value: '1,234',
-    change: '+8% from last week',
-    icon: MessageSquare,
-    color: 'text-purple-600',
-  },
-  {
-    title: 'Success Rate',
-    value: '87.5%',
-    change: '+2.3% from last month',
-    icon: TrendingUp,
-    color: 'text-orange-600',
-  },
-]
+import React, { useState, useEffect } from 'react';
+import { api, ApiResponse } from '@/utils/apiClient';
+
+const fetchDashboardData = async (): Promise<DashboardData> => {
+  const response: ApiResponse<DashboardData> = await api.get('/api/dashboard/data');
+  if (response.success) {
+    return response.data;
+  } else {
+    throw new Error(response.message);
+  }
+};
+
+interface DashboardData {
+  activeCampaigns: number;
+  blogsDiscovered: number;
+  commentsGenerated: number;
+  successRate: number;
+  recentCampaigns: Array<{ name: string; status: string; blogs: number }>;
+  topBlogs: Array<{ title: string; domain: string; score: number; comments: number }>;
+}
 
 export function Dashboard() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchDashboardData()
+      .then(setData)
+      .catch((error) => {
+        console.error('Error fetching dashboard data:', error);
+        setError('Failed to load dashboard data');
+      });
+  }, []);
+
+  if (error) {
+    return <div className="text-red-600">{error}</div>;
+  }
+
+  if (!data) {
+    return <div className="text-gray-600">Loading...</div>;
+  }
+
+  const stats = [
+    {
+      title: 'Active Campaigns',
+      value: data.activeCampaigns,
+      change: '+2 from last month', // TODO: Calculate from historical data
+      icon: Target,
+      color: 'text-blue-600',
+    },
+    {
+      title: 'Blogs Discovered',
+      value: data.blogsDiscovered,
+      change: '+15% from last week', // TODO: Calculate from historical data
+      icon: Activity,
+      color: 'text-green-600',
+    },
+    {
+      title: 'Comments Generated',
+      value: data.commentsGenerated,
+      change: '+8% from last week', // TODO: Calculate from historical data
+      icon: MessageSquare,
+      color: 'text-purple-600',
+    },
+    {
+      title: 'Success Rate',
+      value: `${data.successRate}%`,
+      change: '+2.3% from last month', // TODO: Calculate from historical data
+      icon: TrendingUp,
+      color: 'text-orange-600',
+    },
+  ];
+
   return (
     <div className="space-y-8">
       {/* Page Header */}
@@ -82,31 +122,27 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { name: 'Tech Blog Outreach Q1', status: 'Active', blogs: 245 },
-                { name: 'SaaS Content Marketing', status: 'Active', blogs: 189 },
-                { name: 'AI/ML Industry Blogs', status: 'Paused', blogs: 156 },
-              ].map((campaign) => (
-                <div key={campaign.name} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {campaign.name}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {campaign.blogs} blogs discovered
-                    </p>
-                  </div>
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      campaign.status === 'Active'
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
-                    }`}
-                  >
-                    {campaign.status}
-                  </span>
-                </div>
-              ))}
+{data.recentCampaigns.map((campaign) => (
+  <div key={campaign.name} className="flex items-center justify-between">
+    <div>
+      <p className="font-medium text-gray-900 dark:text-white">
+        {campaign.name}
+      </p>
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        {campaign.blogs} blogs discovered
+      </p>
+    </div>
+    <span
+      className={`px-2 py-1 text-xs rounded-full ${
+        campaign.status === 'Active'
+          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+      }`}
+    >
+      {campaign.status}
+    </span>
+  </div>
+))}
             </div>
           </CardContent>
         </Card>
@@ -120,47 +156,28 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { 
-                  title: 'The Future of AI in Marketing',
-                  domain: 'techcrunch.com',
-                  score: 95,
-                  comments: 3
-                },
-                { 
-                  title: 'Building Scalable SaaS Products',
-                  domain: 'medium.com',
-                  score: 92,
-                  comments: 2
-                },
-                { 
-                  title: 'Machine Learning Best Practices',
-                  domain: 'towardsdatascience.com',
-                  score: 89,
-                  comments: 1
-                },
-              ].map((blog, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 dark:text-white truncate">
-                      {blog.title}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {blog.domain} • {blog.comments} comments
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {blog.score}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Quality
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+{data.topBlogs.map((blog) => (
+  <div key={blog.title} className="flex items-center justify-between">
+    <div className="flex-1 min-w-0">
+      <p className="font-medium text-gray-900 dark:text-white truncate">
+        {blog.title}
+      </p>
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        {blog.domain} • {blog.comments} comments
+      </p>
+    </div>
+    <div className="flex items-center space-x-2">
+      <div className="text-right">
+        <p className="text-sm font-medium text-gray-900 dark:text-white">
+          {blog.score}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Quality
+        </p>
+      </div>
+    </div>
+  </div>
+))}
             </div>
           </CardContent>
         </Card>

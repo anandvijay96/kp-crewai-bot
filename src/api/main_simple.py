@@ -49,7 +49,10 @@ async def health_check() -> Dict[str, Any]:
 
 # Include Authentication Routes
 try:
-    from .routes.auth_new import router as auth_router
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    from routes.auth_new import router as auth_router
     app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
     logger.info("✅ Authentication routes loaded successfully")
 except ImportError as e:
