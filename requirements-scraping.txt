@@ -1,0 +1,48 @@
+# Phase 6: Real-Time Web Scraping Dependencies
+# ===============================================
+
+# Browser Automation
+playwright==1.40.0
+selenium==4.15.2
+
+# Web Scraping and Parsing
+beautifulsoup4==4.12.2
+lxml==4.9.3
+requests==2.31.0
+aiohttp==3.9.1
+
+# Search Engine APIs
+google-api-python-client==2.108.0
+google-auth-httplib2==0.1.1
+google-auth-oauthlib==1.1.0
+
+# Content Analysis and NLP
+nltk==3.8.1
+textstat==0.7.3
+readability==0.3.1
+
+# Domain Authority and SEO Tools
+python-whois==0.8.0
+dnspython==2.4.2
+
+# Rate Limiting and Proxy Support
+ratelimit==2.2.1
+requests-ratelimiter==0.4.2
+
+# Data Validation and Cleaning
+validators==0.22.0
+urllib3==1.26.18
+
+# Async Support
+asyncio-throttle==1.0.2
+aiofiles==23.2.1
+
+# JSON and Data Processing
+ijson==3.2.3
+orjson==3.9.10
+
+# Progress Tracking
+tqdm==4.66.1
+
+# Testing for Scraping Components
+pytest-playwright==0.4.3
