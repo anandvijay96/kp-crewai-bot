@@ -181,3 +181,32 @@ export interface ScrapingStats {
   };
   browserInstances: number;
 }
+
+// Additional types for the scraper service
+export type ContentType = 'article' | 'blog' | 'product' | 'documentation' | 'webpage' | 'unknown';
+
+export interface ScrapingOptions {
+  includeMetadata?: boolean;
+  includeImages?: boolean;
+  includeLinks?: boolean;
+  includeAuthorityScore?: boolean;
+  maxContentLength?: number;
+  timeout?: number;
+  concurrentLimit?: number;
+  batchDelay?: number;
+}
+
+export interface ContentScrapingResult {
+  url: string;
+  title: string;
+  content: string;
+  contentType: ContentType;
+  metadata: Record<string, any>;
+  links: Array<{ url: string; text: string; type: string }>;
+  images: Array<{ url: string; alt: string; caption?: string }>;
+  authorityScore?: AuthorityScore;
+  scrapedAt: Date;
+  responseTime: number;
+  success: boolean;
+  error?: string;
+}

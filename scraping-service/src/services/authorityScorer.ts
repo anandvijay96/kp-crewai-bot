@@ -24,7 +24,7 @@ export class AuthorityScorer {
       await this.browserManager.injectSEOQuake(page);
 
       // Wait for page to fully load
-      await page.waitForLoadState('networkidle');
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for dynamic content
 
       // Extract domain authority and page authority
       const authorityData = await this.extractAuthorityMetrics(page);

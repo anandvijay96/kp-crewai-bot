@@ -1,13 +1,13 @@
 // Core web scraping service for extracting content from URLs
 import { Page } from 'puppeteer';
-import { ScrapingResult, ScrapingOptions, ContentType } from '../types/scraping';
+import { ContentScrapingResult, ScrapingOptions, ContentType } from '../types/scraping';
 import { getBrowserManager } from '../utils/browser';
 import { authorityScorer } from './authorityScorer';
 
 export class WebScraper {
   private browserManager = getBrowserManager();
 
-  async scrapeUrl(url: string, options: ScrapingOptions = {}): Promise<ScrapingResult> {
+  async scrapeUrl(url: string, options: ScrapingOptions = {}): Promise<ContentScrapingResult> {
     console.log(`🌐 Starting scraping for: ${url}`);
     
     const startTime = Date.now();
@@ -31,8 +31,8 @@ export class WebScraper {
         throw new Error(`Failed to navigate to ${url}`);
       }
 
-      // Wait for content to load
-      await page.waitForLoadState('domcontentloaded');
+      // Wait for content to load  
+      await page.waitForSelector('body', { timeout: scrapeOptions.timeout });
       
       // Extract content based on detected content type
       const contentType = await this.detectContentType(page);
@@ -59,10 +59,10 @@ export class WebScraper {
 
       const responseTime = Date.now() - startTime;
 
-      const result: ScrapingResult = {
+      const result: ContentScrapingResult = {
         url,
         title: metadata.title || '',
-        content: content.substring(0, scrapeOptions.maxContentLength),
+        content: (content || '').substring(0, scrapeOptions.maxContentLength),
         contentType,
         metadata,
         links,
@@ -190,7 +190,7 @@ export class WebScraper {
             for (const selector of articleSelectors) {
               const element = document.querySelector(selector);
               if (element) {
-                mainContent = element.innerText;
+                mainContent = (element as HTMLElement).innerText;
                 break;
               }
             }
@@ -208,7 +208,7 @@ export class WebScraper {
             for (const selector of blogSelectors) {
               const element = document.querySelector(selector);
               if (element) {
-                mainContent = element.innerText;
+                mainContent = (element as HTMLElement).innerText;
                 break;
               }
             }
@@ -226,13 +226,13 @@ export class WebScraper {
             
             // Get product title
             const titleEl = document.querySelector('h1, .product-title, .title');
-            if (titleEl) productParts.push(titleEl.innerText);
+            if (titleEl) productParts.push((titleEl as HTMLElement).innerText);
 
             // Get product description
             for (const selector of productSelectors) {
               const element = document.querySelector(selector);
               if (element) {
-                productParts.push(element.innerText);
+                productParts.push((element as HTMLElement).innerText);
                 break;
               }
             }
@@ -254,7 +254,7 @@ export class WebScraper {
             for (const selector of generalSelectors) {
               const element = document.querySelector(selector);
               if (element) {
-                mainContent = element.innerText;
+                mainContent = (element as HTMLElement).innerText;
                 break;
               }
             }
@@ -410,10 +410,10 @@ export class WebScraper {
     }
   }
 
-  async batchScrape(urls: string[], options: ScrapingOptions = {}): Promise<ScrapingResult[]> {
+  async batchScrape(urls: string[], options: ScrapingOptions = {}): Promise<ContentScrapingResult[]> {
     console.log(`🔄 Starting batch scraping for ${urls.length} URLs...`);
     
-    const results: ScrapingResult[] = [];
+    const results: ContentScrapingResult[] = [];
     const concurrentLimit = options.concurrentLimit || 3;
     
     for (let i = 0; i < urls.length; i += concurrentLimit) {
