@@ -5,71 +5,49 @@ import WebSocket from 'ws';
 import { Server } from 'http';
 import dotenv from 'dotenv';
 import { join } from 'path';
-import { getBrowserManager } from './utils/browser';
+import { getBrowserManager, closeBrowserManager } from './utils/browser';
 import { ServiceConfig, WebSocketMessage } from './types/scraping';
+import scrapingRoutes from './routes/scraping';
+import { generalRateLimit, requestLogger, requestSizeLimit } from './middleware/rateLimiter';
 
 // Load environment variables
 dotenv.config({ path: join(__dirname, '../.env') });
 
+// Load service configuration
+import { getConfig } from './config/config';
+const serviceConfig = getConfig();
+
 // Initialize Express app
 const app = express();
-app.use(cors());
-app.use(express.json());
+
+// Trust proxy for rate limiting
+app.set('trust proxy', 1);
+
+// Middleware
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:8000'],
+  credentials: true
+}));
+app.use(requestLogger);
+app.use(requestSizeLimit(50)); // 50KB request size limit
+app.use(express.json({ limit: '50kb' }));
+app.use(express.urlencoded({ extended: true, limit: '50kb' }));
 
 // Initialize HTTP Server for WebSocket
 const server = new Server(app);
 const wss = new WebSocket.Server({ server });
-
-const PORT = process.env.PORT || 3000;
-
-// Browser and Service Configurations
-const browserConfig = {
-  headless: true,
-  viewport: { width: 1280, height: 720 },
-  timeout: 60000,
-  retries: 2,
-  stealthMode: true,
-  extensionsEnabled: true,
-};
-
-const serviceConfig: ServiceConfig = {
-  port: PORT as number,
-  pythonBackendUrl: process.env.PYTHON_BACKEND_URL || 'http://localhost:8001',
-  browser: browserConfig,
-  rateLimit: {
-    requestsPerSecond: 2,
-    requestsPerMinute: 120,
-    requestsPerHour: 1000,
-    burstLimit: 10,
-    cooldownPeriod: 2000,
-  },
-  searchEngines: {
-    google: {
-      apiKey: process.env.GOOGLE_API_KEY,
-      searchEngineId: process.env.GOOGLE_CSE_ID,
-      dailyLimit: 100,
-    },
-    bing: {
-      apiKey: process.env.BING_API_KEY,
-      monthlyLimit: 3000,
-    },
-    duckduckgo: {
-      enabled: true,
-      maxConcurrent: 5,
-    },
-  },
-  seoQuake: {
-    enabled: true,
-    extensionPath: './extensions',
-    timeout: 10000,
-  },
-};
 
 // Initialize Browser Manager
 const browserManager = getBrowserManager(serviceConfig.browser);
 
 (async () => {
   await browserManager.initialize();
+
+  // Apply general rate limiting
+  app.use(generalRateLimit.middleware());
+
+  // API Routes
+  app.use('/api/scraping', scrapingRoutes);
 
   // Health Check Route
   app.get('/health', async (_, res) => {
@@ -92,12 +70,58 @@ const browserManager = getBrowserManager(serviceConfig.browser);
   });
 
   // Start the HTTP server
-  server.listen(PORT, () => {
-    console.log(`🚀 Bun scraping service running on http://localhost:${PORT}`);
+  server.listen(serviceConfig.port, () => {
+    console.log(`🚀 Bun scraping service running on http://localhost:${serviceConfig.port}`);
+    console.log('💡 Press Ctrl+C to gracefully shutdown');
   });
 })().catch(err => {
   console.error('Failed to initialize Bun server:', err);
+  process.exit(1);
 });
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Received SIGINT (Ctrl+C). Gracefully shutting down...');
+  await gracefulShutdown();
+});
+
+process.on('SIGTERM', async () => {
+  console.log('🛑 Received SIGTERM. Gracefully shutting down...');
+  await gracefulShutdown();
+});
+
+// Graceful shutdown function
+async function gracefulShutdown() {
+  console.log('🔄 Starting graceful shutdown...');
+  
+  try {
+    // Close WebSocket server
+    console.log('📡 Closing WebSocket server...');
+    wss.close();
+    
+    // Close browser manager
+    console.log('🌐 Closing browser manager...');
+    await closeBrowserManager();
+    
+    // Close HTTP server
+    console.log('🚪 Closing HTTP server...');
+    server.close(() => {
+      console.log('✅ HTTP server closed');
+      console.log('👋 Graceful shutdown complete. Goodbye!');
+      process.exit(0);
+    });
+    
+    // Force exit if graceful shutdown takes too long
+    setTimeout(() => {
+      console.log('⚠️ Graceful shutdown timeout. Forcing exit...');
+      process.exit(1);
+    }, 10000); // 10 second timeout
+    
+  } catch (error) {
+    console.error('❌ Error during graceful shutdown:', error);
+    process.exit(1);
+  }
+}
 
 // Function to handle WebSocket messages
 function handleWebSocketMessage(ws: WebSocket, msg: WebSocketMessage) {

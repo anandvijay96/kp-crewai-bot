@@ -4,24 +4,32 @@ import { AuthorityScore } from '../types/scraping';
 import { getBrowserManager } from '../utils/browser';
 
 export class AuthorityScorer {
-  private browserManager = getBrowserManager();
+  private browserManager?: any;
+  
+  private getBrowserManager() {
+    if (!this.browserManager) {
+      this.browserManager = getBrowserManager();
+    }
+    return this.browserManager;
+  }
 
   async getAuthorityScore(url: string): Promise<AuthorityScore> {
     console.log(`🔍 Getting authority score for: ${url}`);
     
     const startTime = Date.now();
-    const page = await this.browserManager.createPage();
+    const browserManager = this.getBrowserManager();
+    const page = await browserManager.createPage();
 
     try {
       // Navigate to the URL
-      const navigationSuccess = await this.browserManager.navigateWithRetry(page, url);
+      const navigationSuccess = await browserManager.navigateWithRetry(page, url);
       
       if (!navigationSuccess) {
         throw new Error(`Failed to navigate to ${url}`);
       }
 
       // Inject SEOquake functionality
-      await this.browserManager.injectSEOQuake(page);
+      await browserManager.injectSEOQuake(page);
 
       // Wait for page to fully load
       await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for dynamic content
@@ -58,7 +66,7 @@ export class AuthorityScorer {
       // Return fallback score
       return this.getFallbackScore(url);
     } finally {
-      await this.browserManager.closePage(page);
+      await browserManager.closePage(page);
     }
   }
 
@@ -253,8 +261,9 @@ export class AuthorityScorer {
   }
 
   getStats() {
+    const browserManager = this.getBrowserManager();
     return {
-      browserStats: this.browserManager.getStats(),
+      browserStats: browserManager.getStats(),
       timestamp: new Date(),
     };
   }

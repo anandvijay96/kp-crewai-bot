@@ -5,13 +5,21 @@ import { getBrowserManager } from '../utils/browser';
 import { authorityScorer } from './authorityScorer';
 
 export class WebScraper {
-  private browserManager = getBrowserManager();
+  private browserManager?: any;
+  
+  private getBrowserManager() {
+    if (!this.browserManager) {
+      this.browserManager = getBrowserManager();
+    }
+    return this.browserManager;
+  }
 
   async scrapeUrl(url: string, options: ScrapingOptions = {}): Promise<ContentScrapingResult> {
     console.log(`🌐 Starting scraping for: ${url}`);
     
     const startTime = Date.now();
-    const page = await this.browserManager.createPage();
+    const browserManager = this.getBrowserManager();
+    const page = await browserManager.createPage();
 
     try {
       // Set default options
@@ -25,7 +33,7 @@ export class WebScraper {
       };
 
       // Navigate to the URL
-      const navigationSuccess = await this.browserManager.navigateWithRetry(page, url);
+      const navigationSuccess = await browserManager.navigateWithRetry(page, url);
       
       if (!navigationSuccess) {
         throw new Error(`Failed to navigate to ${url}`);
@@ -94,7 +102,7 @@ export class WebScraper {
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     } finally {
-      await this.browserManager.closePage(page);
+      await browserManager.closePage(page);
     }
   }
 
@@ -476,8 +484,9 @@ export class WebScraper {
   }
 
   getStats() {
+    const browserManager = this.getBrowserManager();
     return {
-      browserStats: this.browserManager.getStats(),
+      browserStats: browserManager.getStats(),
       timestamp: new Date(),
     };
   }
