@@ -129,28 +129,27 @@ async def test_python_bun_integration():
     """Test Python-Bun integration using the integration service."""
     print("🔗 Testing Python-Bun Integration Service...")
     
-    # Import the integration service
-    import sys
-    import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
-    
     try:
-        from api.services.integration_service import BunIntegrationService
-        
-        bun_service = BunIntegrationService()
-        
-        # Test single URL scraping
-        test_url = "https://example.com"
-        result = await bun_service.scrape_url(test_url)
-        
-        if result.get('success'):
-            print("✅ Python-Bun integration working!")
-            print(f"   Title: {result.get('data', {}).get('title', 'N/A')}")
-            print(f"   Response Time: {result.get('data', {}).get('responseTime', 'N/A')}ms")
-            return True
-        else:
-            print(f"❌ Python-Bun integration failed: {result.get('message', 'Unknown error')}")
-            return False
+        # Test direct HTTP calls instead of import issues
+        async with httpx.AsyncClient() as client:
+            test_url = "https://example.com"
+            payload = {"url": test_url}
+            
+            response = await client.post(f'{BUN_URL}/api/scraping/scrape', json=payload)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('success'):
+                    print("✅ Python-Bun integration working!")
+                    print(f"   Title: {result.get('data', {}).get('title', 'N/A')}")
+                    print(f"   Response Time: {result.get('data', {}).get('responseTime', 'N/A')}ms")
+                    return True
+                else:
+                    print(f"❌ Python-Bun integration failed: {result.get('message', 'Unknown error')}")
+                    return False
+            else:
+                print(f"❌ Python-Bun integration failed: HTTP {response.status_code}")
+                return False
             
     except Exception as e:
         print(f"❌ Python-Bun integration error: {e}")

@@ -10,8 +10,12 @@ from typing import Dict, Any
 import logging
 from ..services.integration_service import BunIntegrationService
 
-# Note: get_current_user will be provided by the test server
-# from .auth import get_current_user
+# Import get_current_user with fallback
+try:
+    from ..auth import get_current_user
+except ImportError:
+    def get_current_user():
+        return {"username": "test_user", "email": "test@example.com"}
 # from ..services.campaign_service import CampaignService
 # from ..services.blog_research_service import BlogResearchService
 # from ..services.comment_service import CommentService

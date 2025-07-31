@@ -394,4 +394,7 @@ class BunIntegrationService:
         }
 
 # Global integration service instance
-integration_service = AgentIntegrationService()
+bun_integration_service = BunIntegrationService()
+
+# Maintain backward compatibility
+integration_service = bun_integration_service
