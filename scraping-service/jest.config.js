@@ -16,4 +16,11 @@ module.exports = {
   testTimeout: 30000, // 30 seconds for browser tests
   verbose: true,
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  // Use extensionsToTreatAsEsm to handle ES modules
+  extensionsToTreatAsEsm: ['.ts'],
+  globals: {
+    'ts-jest': {
+      useESM: true,
+    },
+  },
 };

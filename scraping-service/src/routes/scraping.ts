@@ -3,6 +3,10 @@ import { Router, Request, Response } from 'express';
 import { webScraper } from '../services/scraper';
 import { authorityScorer } from '../services/authorityScorer';
 import { ScrapingOptions } from '../types/scraping';
+import GoogleSearchService from '../services/googleSearch';
+import { getConfig } from '../config/config';
+
+const googleSearchService = new GoogleSearchService(getConfig());
 
 const router = Router();
 
@@ -332,6 +336,30 @@ router.get('/stats', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('API: Error in /stats:', error);
+    return errorResponse(res, 500, 'Internal server error', {
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/scraping/blog-discovery
+ * Discover blogs using Google Search
+ */
+router.post('/blog-discovery', async (req: Request, res: Response) => {
+  try {
+    const { query, numResults } = req.body;
+
+    if (!query) {
+      return errorResponse(res, 400, 'Query is required');
+    }
+
+    console.log(`📡 API: Blog discovery request with query ${query}`);
+    const results = await googleSearchService.search(query, numResults || 10);
+
+    return successResponse(res, results, 'Blog discovery completed successfully');
+  } catch (error) {
+    console.error('API: Error in /blog-discovery:', error);
     return errorResponse(res, 500, 'Internal server error', {
       message: error instanceof Error ? error.message : 'Unknown error'
     });
