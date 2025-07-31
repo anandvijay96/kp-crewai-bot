@@ -32,8 +32,18 @@ export class BrowserManager {
         '--disable-dev-shm-usage',
         '--disable-web-security',
         '--disable-features=VizDisplayCompositor',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-background-networking',
         '--disable-extensions-except=./extensions', // Allow our extensions
         '--load-extension=./extensions', // Load SEOquake if available
+        '--disable-plugins',
+        '--disable-default-apps',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-component-update',
         `--window-size=${this.config.viewport.width},${this.config.viewport.height}`,
       ],
       timeout: this.config.timeout,
@@ -153,26 +163,49 @@ export class BrowserManager {
         console.log(`🌐 Navigating to ${url} (attempt ${attempt}/${maxRetries})`);
         
         // Add random delay to appear more human-like
-        const delay = Math.random() * 2000 + 1000; // 1-3 seconds
+        const delay = Math.random() * 1000 + 500; // 0.5-1.5 seconds
         await new Promise(resolve => setTimeout(resolve, delay));
 
-        const response = await page.goto(url, { 
-          waitUntil: 'networkidle0',
-          timeout: this.config.timeout 
+        // Block unnecessary resources for faster loading
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+          const resourceType = req.resourceType();
+          if (resourceType === 'image' || resourceType === 'stylesheet' || resourceType === 'font') {
+            req.abort();
+          } else {
+            req.continue();
+          }
         });
 
-        if (response && response.ok()) {
-          console.log('✅ Navigation successful');
+        // Try different waitUntil strategies based on attempt
+        const waitStrategy = attempt === 1 ? 'domcontentloaded' : 
+                           attempt === 2 ? 'networkidle2' : 'load';
+        
+        const response = await page.goto(url, { 
+          waitUntil: waitStrategy as any,
+          timeout: Math.min(this.config.timeout, 45000) // Cap at 45s per attempt
+        });
+
+        if (response && (response.ok() || response.status() < 400)) {
+          console.log(`✅ Navigation successful with status: ${response.status()}`);
           return true;
         } else {
           console.log(`⚠️ Navigation returned status: ${response?.status()}`);
+          if (response && response.status() >= 400 && response.status() < 500) {
+            // Client error, don't retry
+            return false;
+          }
         }
       } catch (error) {
         console.error(`❌ Navigation attempt ${attempt} failed:`, error);
         
+        // Check if it's a timeout error
+        const isTimeout = error instanceof Error && 
+          (error.message.includes('timeout') || error.message.includes('Navigation timeout'));
+        
         if (attempt < maxRetries) {
-          // Exponential backoff
-          const backoffDelay = Math.pow(2, attempt) * 1000;
+          // Use shorter backoff for timeouts, longer for other errors
+          const backoffDelay = isTimeout ? 2000 : Math.pow(2, attempt) * 1000;
           console.log(`⏳ Retrying in ${backoffDelay}ms...`);
           await new Promise(resolve => setTimeout(resolve, backoffDelay));
         }

@@ -28,7 +28,7 @@ export class WebScraper {
         includeImages: false,
         includeLinks: true,
         maxContentLength: 50000,
-        timeout: 30000,
+        timeout: 60000, // Increased from 30s to 60s
         ...options
       };
 

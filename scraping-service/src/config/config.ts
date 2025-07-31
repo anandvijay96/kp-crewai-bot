@@ -5,8 +5,8 @@ import { BrowserConfig, ServiceConfig } from '../types/scraping';
 export const defaultBrowserConfig: BrowserConfig = {
   headless: true,
   viewport: { width: 1280, height: 720 },
-  timeout: 60000,
-  retries: 2,
+  timeout: 90000, // Increased from 60s to 90s
+  retries: 3, // Increased from 2 to 3
   stealthMode: true,
   extensionsEnabled: true,
 };
