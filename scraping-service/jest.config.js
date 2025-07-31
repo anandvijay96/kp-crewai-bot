@@ -16,11 +16,8 @@ module.exports = {
   testTimeout: 30000, // 30 seconds for browser tests
   verbose: true,
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
-  // Use extensionsToTreatAsEsm to handle ES modules
-  extensionsToTreatAsEsm: ['.ts'],
-  globals: {
-    'ts-jest': {
-      useESM: true,
-    },
-  },
+  // Handle ES modules from node_modules
+  transformIgnorePatterns: [
+    'node_modules/(?!(node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill)/)',
+  ],
 };

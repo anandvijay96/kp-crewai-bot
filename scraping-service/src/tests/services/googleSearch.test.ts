@@ -2,9 +2,12 @@
 import GoogleSearchService from '../../services/googleSearch';
 import { ServiceConfig } from '../../types/scraping';
 
-// Mock fetch to avoid actual API calls during testing
-jest.mock('node-fetch');
-const mockedFetch = require('node-fetch') as jest.MockedFunction<typeof fetch>;
+// Mock node-fetch completely
+jest.mock('node-fetch', () => {
+  return jest.fn();
+});
+
+const mockFetch = require('node-fetch') as jest.MockedFunction<any>;
 
 describe('GoogleSearchService', () => {
   let googleSearchService: GoogleSearchService;
@@ -88,9 +91,9 @@ describe('GoogleSearchService', () => {
   describe('Search Functionality', () => {
     it('should successfully search and return results', async () => {
       // Mock successful API response
-      const mockResponse = {
+      mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: async () => ({
           items: [
             {
               title: 'Test Blog 1',
@@ -103,10 +106,8 @@ describe('GoogleSearchService', () => {
               snippet: 'Another test blog about development',
             },
           ],
-        }),
-      };
-
-      mockedFetch.mockResolvedValue(mockResponse as any);
+        })
+      });
 
       const results = await googleSearchService.search('test query', 2);
 
@@ -128,31 +129,25 @@ describe('GoogleSearchService', () => {
     });
 
     it('should handle empty search results', async () => {
-      const mockResponse = {
+      mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: async () => ({
           items: [],
-        }),
-      };
-
-      mockedFetch.mockResolvedValue(mockResponse as any);
+        })
+      });
 
       const results = await googleSearchService.search('no results query');
       expect(results).toHaveLength(0);
     });
 
     it('should handle API errors gracefully', async () => {
-      const mockResponse = {
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 403,
-        json: jest.fn().mockResolvedValue({
-          error: {
-            message: 'Daily quota exceeded',
-          },
-        }),
-      };
-
-      mockedFetch.mockResolvedValue(mockResponse as any);
+        json: async () => ({
+          error: { message: 'Daily quota exceeded' }
+        })
+      });
 
       await expect(googleSearchService.search('test query')).rejects.toThrow(
         'Google Search API error: 403 - Daily quota exceeded'
@@ -195,9 +190,9 @@ describe('GoogleSearchService', () => {
       const limitedService = new GoogleSearchService(limitedConfig);
 
       // Mock successful response
-      const mockResponse = {
+      mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: async () => ({
           items: [
             {
               title: 'Test Blog',
@@ -205,10 +200,8 @@ describe('GoogleSearchService', () => {
               snippet: 'Test snippet',
             },
           ],
-        }),
-      };
-
-      mockedFetch.mockResolvedValue(mockResponse as any);
+        })
+      });
 
       // First request should succeed
       await limitedService.search('first query');
@@ -220,33 +213,32 @@ describe('GoogleSearchService', () => {
     });
 
     it('should limit results to maximum of 10 per request', async () => {
-      const mockResponse = {
+      mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: async () => ({
           items: Array.from({ length: 15 }, (_, i) => ({
             title: `Blog ${i + 1}`,
             link: `https://example.com/blog${i + 1}`,
             snippet: `Snippet ${i + 1}`,
           })),
-        }),
-      };
-
-      mockedFetch.mockResolvedValue(mockResponse as any);
+        })
+      });
 
       await googleSearchService.search('test query', 15);
 
       // Check that the API was called with num=10 (Google's limit)
-      expect(mockedFetch).toHaveBeenCalledWith(
-        expect.stringContaining('&num=10')
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('&num=10'),
+        expect.any(Object)
       );
     });
   });
 
   describe('Statistics and Management', () => {
     it('should track request count correctly', async () => {
-      const mockResponse = {
+      mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: async () => ({
           items: [
             {
               title: 'Test Blog',
@@ -254,10 +246,8 @@ describe('GoogleSearchService', () => {
               snippet: 'Test snippet',
             },
           ],
-        }),
-      };
-
-      mockedFetch.mockResolvedValue(mockResponse as any);
+        })
+      });
 
       // Initial stats
       let stats = googleSearchService.getStats();
@@ -283,26 +273,24 @@ describe('GoogleSearchService', () => {
 
   describe('Edge Cases', () => {
     it('should handle malformed API responses', async () => {
-      const mockResponse = {
+      mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: async () => ({
           // Missing items array
           searchInformation: {
             totalResults: '0',
           },
-        }),
-      };
-
-      mockedFetch.mockResolvedValue(mockResponse as any);
+        })
+      });
 
       const results = await googleSearchService.search('test query');
       expect(results).toHaveLength(0);
     });
 
     it('should filter out results without URLs', async () => {
-      const mockResponse = {
+      mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({
+        json: async () => ({
           items: [
             {
               title: 'Valid Blog',
@@ -320,10 +308,8 @@ describe('GoogleSearchService', () => {
               snippet: 'Another valid snippet',
             },
           ],
-        }),
-      };
-
-      mockedFetch.mockResolvedValue(mockResponse as any);
+        })
+      });
 
       const results = await googleSearchService.search('test query');
       expect(results).toHaveLength(2); // Should filter out the one without URL
@@ -331,9 +317,90 @@ describe('GoogleSearchService', () => {
     });
 
     it('should handle network errors', async () => {
-      mockedFetch.mockRejectedValue(new Error('Network error'));
+      mockFetch.mockRejectedValue(new Error('Network error'));
 
       await expect(googleSearchService.search('test query')).rejects.toThrow('Network error');
+    });
+
+    it('should handle timeout errors', async () => {
+      const abortError = new Error('The operation was aborted');
+      abortError.name = 'AbortError';
+      mockFetch.mockRejectedValue(abortError);
+
+      await expect(googleSearchService.search('test query')).rejects.toThrow(
+        'Search request timed out after 5 seconds'
+      );
+    });
+  });
+
+  describe('Performance Optimizations', () => {
+    it('should cache search results', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              title: 'Cached Blog',
+              link: 'https://example.com/cached',
+              snippet: 'Cached snippet',
+            },
+          ],
+        })
+      });
+
+      // First search - should hit API
+      const results1 = await googleSearchService.search('cached query');
+      expect(results1).toHaveLength(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // Second search with same query - should use cache
+      const results2 = await googleSearchService.search('cached query');
+      expect(results2).toHaveLength(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1); // No additional API call
+
+      // Results should be identical
+      expect(results1).toEqual(results2);
+    });
+
+    it('should track performance metrics', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              title: 'Test Blog',
+              link: 'https://example.com/test',
+              snippet: 'Test snippet',
+            },
+          ],
+        })
+      });
+
+      // Initial stats
+      let stats = googleSearchService.getStats();
+      expect(stats.performance.totalRequests).toBe(0);
+      expect(stats.performance.cacheHits).toBe(0);
+      expect(stats.performance.cacheHitRate).toBe(0);
+
+      // First search
+      await googleSearchService.search('perf test');
+      stats = googleSearchService.getStats();
+      expect(stats.performance.totalRequests).toBe(1);
+      expect(stats.performance.averageResponseTime).toBeGreaterThan(0);
+
+      // Second search (cache hit)
+      await googleSearchService.search('perf test');
+      stats = googleSearchService.getStats();
+      expect(stats.performance.totalRequests).toBe(2);
+      expect(stats.performance.cacheHits).toBe(1);
+      expect(stats.performance.cacheHitRate).toBe(50); // 1 out of 2 requests
+    });
+
+    it('should include cache information in stats', () => {
+      const stats = googleSearchService.getStats();
+      expect(stats.performance).toBeDefined();
+      expect(stats.performance.cacheSize).toBeDefined();
+      expect(stats.performance.cacheTimeout).toBe(300); // 5 minutes in seconds
     });
   });
 });

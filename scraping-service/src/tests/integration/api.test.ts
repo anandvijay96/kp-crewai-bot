@@ -2,6 +2,16 @@ import request from 'supertest';
 import express from 'express';
 import cors from 'cors';
 
+// Mock node-fetch to prevent ES module issues
+jest.mock('node-fetch', () => {
+  return jest.fn();
+});
+
+// Mock main.ts to prevent server startup during tests
+jest.mock('../../main', () => ({
+  getActiveWebSocketManager: jest.fn().mockReturnValue(null)
+}));
+
 // Mock the service modules first
 jest.mock('../../services/scraper', () => ({
   webScraper: {
@@ -38,7 +48,7 @@ jest.mock('../../services/authorityScorer', () => ({
 }));
 
 // Import the main components we want to test integration of
-import scrapingRoutes from '../../routes/scraping';
+import { createScrapingRouter } from '../../routes/scraping';
 import { generalRateLimit, requestLogger, requestSizeLimit } from '../../middleware/rateLimiter';
 
 describe('API Integration Tests', () => {
@@ -65,6 +75,7 @@ describe('API Integration Tests', () => {
     app.use(generalRateLimit.middleware());
 
     // API Routes
+    const scrapingRoutes = createScrapingRouter();
     app.use('/api/scraping', scrapingRoutes);
 
     // Health Check Route

@@ -7,6 +7,21 @@ class GoogleSearchService {
   private apiUrl: string = 'https://www.googleapis.com/customsearch/v1';
   private dailyLimit: number;
   private requestCount: number = 0;
+  private cache: Map<string, { results: SearchEngineResult[]; timestamp: number }> = new Map();
+  private cacheTimeout: number = 5 * 60 * 1000; // 5 minutes cache
+  private performanceMetrics: {
+    totalRequests: number;
+    totalResponseTime: number;
+    averageResponseTime: number;
+    cacheHits: number;
+    cacheHitRate: number;
+  } = {
+    totalRequests: 0,
+    totalResponseTime: 0,
+    averageResponseTime: 0,
+    cacheHits: 0,
+    cacheHitRate: 0
+  };
 
   constructor(config: ServiceConfig) {
     const googleConfig = config.searchEngines.google;
@@ -21,6 +36,19 @@ class GoogleSearchService {
   }
 
   async search(query: string, numResults: number = 10): Promise<SearchEngineResult[]> {
+    const startTime = Date.now();
+    const cacheKey = `${query}-${numResults}`;
+    this.performanceMetrics.totalRequests++;
+
+    // Check cache first for performance optimization
+    const cachedResult = this.cache.get(cacheKey);
+    if (cachedResult && (Date.now() - cachedResult.timestamp) < this.cacheTimeout) {
+      this.performanceMetrics.cacheHits++;
+      this.updatePerformanceMetrics(Date.now() - startTime);
+      console.log(`⚡ Cache hit for query: "${query}" (${cachedResult.results.length} results)`);
+      return cachedResult.results;
+    }
+
     // Check if we have valid configuration
     if (!this.apiKey || !this.searchEngineId) {
       throw new Error('Google Search API credentials not configured');
@@ -38,7 +66,19 @@ class GoogleSearchService {
     
     try {
       console.log(`🔍 Google Search: "${query}" (${limitedResults} results)`);
-      const response = await fetch(url);
+      
+      // Set timeout for faster response
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+      
+      const response = await fetch(url, { 
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; SEO-Bot/1.0)'
+        }
+      });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown API error' }));
@@ -50,10 +90,30 @@ class GoogleSearchService {
       this.requestCount++;
       
       const results = this.parseResults(data);
-      console.log(`✅ Google Search: Found ${results.length} results for "${query}"`);
+      
+      // Cache the results for performance
+      this.cache.set(cacheKey, {
+        results,
+        timestamp: Date.now()
+      });
+      
+      // Clean up old cache entries
+      this.cleanupCache();
+      
+      const responseTime = Date.now() - startTime;
+      this.updatePerformanceMetrics(responseTime);
+      
+      console.log(`✅ Google Search: Found ${results.length} results for "${query}" (${responseTime}ms)`);
       
       return results;
     } catch (error) {
+      const responseTime = Date.now() - startTime;
+      this.updatePerformanceMetrics(responseTime);
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Search request timed out after 5 seconds');
+      }
+      
       console.error('❌ Google Search API error:', error);
       throw error;
     }
@@ -74,13 +134,37 @@ class GoogleSearchService {
     })).filter((result: SearchEngineResult) => result.url); // Filter out results without URLs
   }
 
-  // Get current usage stats
+  // Update performance metrics
+  private updatePerformanceMetrics(responseTime: number) {
+    this.performanceMetrics.totalResponseTime += responseTime;
+    this.performanceMetrics.averageResponseTime = 
+      this.performanceMetrics.totalResponseTime / this.performanceMetrics.totalRequests;
+    this.performanceMetrics.cacheHitRate = 
+      (this.performanceMetrics.cacheHits / this.performanceMetrics.totalRequests) * 100;
+  }
+
+  // Clean up old cache entries
+  private cleanupCache() {
+    const now = Date.now();
+    for (const [key, value] of this.cache.entries()) {
+      if (now - value.timestamp > this.cacheTimeout) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
+  // Get current usage stats with performance metrics
   getStats() {
     return {
       requestCount: this.requestCount,
       dailyLimit: this.dailyLimit,
       remainingRequests: Math.max(0, this.dailyLimit - this.requestCount),
       isConfigured: !!(this.apiKey && this.searchEngineId),
+      performance: {
+        ...this.performanceMetrics,
+        cacheSize: this.cache.size,
+        cacheTimeout: this.cacheTimeout / 1000 // in seconds
+      }
     };
   }
 

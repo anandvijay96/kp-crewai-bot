@@ -1,11 +1,18 @@
 // Test suite for Blog Discovery Route following TDD approach
 import request from 'supertest';
 import express from 'express';
-import scrapingRoutes from '../../routes/scraping';
 
-// Mock the GoogleSearchService
-jest.mock('../../services/googleSearch');
-const MockedGoogleSearchService = require('../../services/googleSearch').default;
+// Mock node-fetch to prevent ES module issues
+jest.mock('node-fetch', () => {
+  return jest.fn();
+});
+
+// Mock main.ts to prevent server startup during tests
+jest.mock('../../main', () => ({
+  getActiveWebSocketManager: jest.fn().mockReturnValue(null)
+}));
+
+import { createScrapingRouter } from '../../routes/scraping';
 
 describe('Blog Discovery Route', () => {
   let app: express.Application;
@@ -14,17 +21,17 @@ describe('Blog Discovery Route', () => {
   beforeAll(() => {
     app = express();
     app.use(express.json());
-    app.use('/api/scraping', scrapingRoutes);
 
-    // Create a mock instance
+    // Create a mock GoogleSearchService instance
     mockGoogleSearch = {
       search: jest.fn(),
       getStats: jest.fn(),
       resetDailyCounter: jest.fn(),
     };
 
-    // Mock the constructor to return our mock instance
-    MockedGoogleSearchService.mockImplementation(() => mockGoogleSearch);
+    // Create router with mocked GoogleSearchService
+    const scrapingRoutes = createScrapingRouter(mockGoogleSearch as any);
+    app.use('/api/scraping', scrapingRoutes);
   });
 
   beforeEach(() => {

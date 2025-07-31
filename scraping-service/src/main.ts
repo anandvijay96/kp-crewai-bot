@@ -9,6 +9,7 @@ import { getBrowserManager, closeBrowserManager } from './utils/browser';
 import { ServiceConfig, WebSocketMessage } from './types/scraping';
 import scrapingRoutes from './routes/scraping';
 import { generalRateLimit, requestLogger, requestSizeLimit } from './middleware/rateLimiter';
+import { createWebSocketManager, getWebSocketManager } from './services/websocketManager';
 
 // Load environment variables
 dotenv.config({ path: join(__dirname, '../.env') });
@@ -40,8 +41,15 @@ const wss = new WebSocket.Server({ server });
 // Initialize Browser Manager
 const browserManager = getBrowserManager(serviceConfig.browser);
 
+// Initialize WebSocket Manager
+let wsManager: any;
+
 (async () => {
   await browserManager.initialize();
+
+  // Create WebSocket manager
+  wsManager = createWebSocketManager(wss);
+  console.log('📡 WebSocket manager initialized');
 
   // Apply general rate limiting
   app.use(generalRateLimit.middleware());
@@ -52,21 +60,21 @@ const browserManager = getBrowserManager(serviceConfig.browser);
   // Health Check Route
   app.get('/health', async (_, res) => {
     const health = await browserManager.healthCheck();
-    res.status(health ? 200 : 500).json({ status: health ? 'healthy' : 'unhealthy' });
+    const wsStats = wsManager.getStats();
+    res.status(health ? 200 : 500).json({ 
+      status: health ? 'healthy' : 'unhealthy',
+      websocket: wsStats
+    });
   });
 
-  // WebSocket Connection
-  wss.on('connection', (ws: WebSocket) => {
-    console.log('📡 WebSocket client connected');
-
-    ws.on('message', (message: string) => {
-      console.log('Received:', message);
-      // Parse and handle WebSocket messages
-      const msg: WebSocketMessage = JSON.parse(message);
-      handleWebSocketMessage(ws, msg);
+  // WebSocket Stats Route
+  app.get('/api/scraping/ws-stats', async (_, res) => {
+    const stats = wsManager.getStats();
+    res.json({
+      success: true,
+      data: stats,
+      timestamp: new Date().toISOString()
     });
-
-    ws.send(JSON.stringify({ type: 'status_update', message: 'Connected to Bun scraping service' }));
   });
 
   // Start the HTTP server
@@ -95,8 +103,11 @@ async function gracefulShutdown() {
   console.log('🔄 Starting graceful shutdown...');
   
   try {
-    // Close WebSocket server
-    console.log('📡 Closing WebSocket server...');
+    // Close WebSocket manager
+    console.log('📡 Closing WebSocket manager...');
+    if (wsManager) {
+      wsManager.close();
+    }
     wss.close();
     
     // Close browser manager
@@ -123,19 +134,7 @@ async function gracefulShutdown() {
   }
 }
 
-// Function to handle WebSocket messages
-function handleWebSocketMessage(ws: WebSocket, msg: WebSocketMessage) {
-  switch (msg.type) {
-    case 'progress_update':
-      console.log(`Progress on task ${msg.taskId}:`, msg.data);
-      break;
-    case 'task_completed':
-      console.log(`Task ${msg.taskId} completed!`, msg.data);
-      break;
-    case 'task_failed':
-      console.log(`Task ${msg.taskId} failed:`, msg.data);
-      break;
-    default:
-      console.warn('Unknown message type:', msg.type);
-  }
+// Export WebSocket manager for use in routes
+export function getActiveWebSocketManager() {
+  return getWebSocketManager();
 }

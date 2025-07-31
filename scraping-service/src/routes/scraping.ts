@@ -5,10 +5,11 @@ import { authorityScorer } from '../services/authorityScorer';
 import { ScrapingOptions } from '../types/scraping';
 import GoogleSearchService from '../services/googleSearch';
 import { getConfig } from '../config/config';
+import { getActiveWebSocketManager } from '../main';
 
-const googleSearchService = new GoogleSearchService(getConfig());
-
-const router = Router();
+export function createScrapingRouter(googleSearchService?: GoogleSearchService): Router {
+  const router = Router();
+  const searchService = googleSearchService || new GoogleSearchService(getConfig());
 
 // Validation helper
 const validateUrl = (url: string): boolean => {
@@ -347,6 +348,9 @@ router.get('/stats', async (req: Request, res: Response) => {
  * Discover blogs using Google Search
  */
 router.post('/blog-discovery', async (req: Request, res: Response) => {
+  const wsManager = getActiveWebSocketManager();
+  const taskId = `blog-discovery-${Date.now()}`;
+  
   try {
     const { query, numResults } = req.body;
 
@@ -355,10 +359,21 @@ router.post('/blog-discovery', async (req: Request, res: Response) => {
     }
 
     console.log(`📡 API: Blog discovery request with query ${query}`);
-    const results = await googleSearchService.search(query, numResults || 10);
+
+    // Start task with WebSocket
+    wsManager?.startTask(taskId, 'blog_discovery', `Searching for blogs with query: ${query}`);
+
+const results = await searchService.search(query, numResults ?? 10);
+
+    // Update progress
+    wsManager?.updateProgress(taskId, 100, 'Blog discovery completed', { count: results.length });
+
+    // Complete task
+    wsManager?.completeTask(taskId, 'Blog discovery task completed', results);
 
     return successResponse(res, results, 'Blog discovery completed successfully');
   } catch (error) {
+    wsManager?.failTask(taskId, 'Blog discovery task failed', error);
     console.error('API: Error in /blog-discovery:', error);
     return errorResponse(res, 500, 'Internal server error', {
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -366,4 +381,9 @@ router.post('/blog-discovery', async (req: Request, res: Response) => {
   }
 });
 
+  return router;
+}
+
+// Default export with default GoogleSearchService
+const router = createScrapingRouter();
 export default router;
