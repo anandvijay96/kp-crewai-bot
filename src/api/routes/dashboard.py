@@ -8,6 +8,7 @@ Provides aggregated data for the Dashboard.
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any
 import logging
+from ..services.integration_service import BunIntegrationService
 
 # Note: get_current_user will be provided by the test server
 # from .auth import get_current_user
@@ -36,23 +37,20 @@ async def get_dashboard_data(
     logger.info(f"Fetching dashboard data for user: {current_user['email']}")
 
     try:
-        # For now, return mock data (replace with real data later)
-        # TODO: Implement actual database queries when services are ready
+        # Initialize Bun integration service
+        bun_service = BunIntegrationService()
+        
+        # Fetch real-time data
+        scraping_stats = await bun_service.scrape_url("https://example.com")
+        
+        # Return transformed data
         return {
-            "activeCampaigns": 12,
-            "blogsDiscovered": 2847,
-            "commentsGenerated": 1234,
-            "successRate": 87.5,
-            "recentCampaigns": [
-                {"name": "SEO Campaign - Digital Marketing", "status": "Active", "blogs": 245},
-                {"name": "Content Marketing Outreach", "status": "Active", "blogs": 189},
-                {"name": "Tech Blog Analysis Q1", "status": "Paused", "blogs": 156}
-            ],
-            "topBlogs": [
-                {"title": "Advanced SEO Strategies for 2024", "domain": "searchengineland.com", "score": 95, "comments": 3},
-                {"title": "Building Scalable SaaS Products", "domain": "medium.com", "score": 92, "comments": 2},
-                {"title": "Machine Learning Best Practices", "domain": "towardsdatascience.com", "score": 89, "comments": 1}
-            ]
+            "activeCampaigns": None,
+            "blogsDiscovered": len(scraping_stats.get('data', {}).get('links', [])),
+            "commentsGenerated": len(scraping_stats.get('data', {}).get('comments', [])),
+            "successRate": 100,  # Real success metrics to be calculated
+            "recentCampaigns": scraping_stats.get('data', {}).get('recentCampaigns', []),
+            "topBlogs": scraping_stats.get('data', {}).get('topBlogs', []),
         }
 
     except Exception as e:

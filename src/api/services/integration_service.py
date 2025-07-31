@@ -1,8 +1,8 @@
 """
-Integration Service for Real-time Agent Communication
+Integration Service for Real-time Bun Communication
 ====================================================
 
-Connects AI agents with WebSocket notifications for real-time frontend updates.
+Handles communication with Bun scraping microservice for real-time data.
 """
 
 from typing import Dict, Any, Optional, List
@@ -18,12 +18,27 @@ from ..websocket import (
     notify_system_event,
     websocket_manager
 )
+from httpx import AsyncClient
+import os
 
 logger = logging.getLogger(__name__)
 
-class AgentIntegrationService:
-    """Service for integrating AI agents with real-time WebSocket notifications."""
-    
+class BunIntegrationService:
+    """Service for integrating Python backend with Bun microservice."""
+
+    BUN_URL = os.getenv('BUN_MICROSERVICE_URL', 'http://localhost:3001')
+
+    async def scrape_url(self, url: str) -> Dict[str, Any]:
+        async with AsyncClient() as client:
+            response = await client.post(f'{self.BUN_URL}/api/scraping/scrape', json={'url': url})
+            response.raise_for_status()
+            return response.json()
+
+    async def batch_scrape(self, urls: List[str]) -> Dict[str, Any]:
+        async with AsyncClient() as client:
+            response = await client.post(f'{self.BUN_URL}/api/scraping/batch-scrape', json={'urls': urls})
+            response.raise_for_status()
+            return response.json()
     def __init__(self):
         self.active_tasks: Dict[str, Dict[str, Any]] = {}
         self.agent_status: Dict[str, Dict[str, Any]] = {}

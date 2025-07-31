@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 import logging
 
-from ...services.scraping import blog_scraper, BlogSearchRequest, BlogResult
+from ...services.integration_service import BunIntegrationService
 from ..auth.jwt_handler import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -74,30 +74,21 @@ async def start_blog_research(
     Start real-time blog research process
     Replaces the mock test API with actual scraping
     """
-    try:
-        # Convert to internal request format
-        search_request = BlogSearchRequest(
-            keywords=request.keywords,
-            min_domain_authority=request.min_domain_authority,
-            min_page_authority=request.min_page_authority,
-            max_results=request.max_results,
-            categories=request.categories,
-            language=request.language,
-            region=request.region,
-            exclude_domains=set(request.exclude_domains) if request.exclude_domains else None
-        )
+try:
+        # Initialize Bun integration service
+        bun_service = BunIntegrationService()
         
         # Start the research process
-        task_id = await blog_scraper.start_research(search_request)
-        
+        result = await bun_service.scrape_url(request.keywords[0])
+        task_id = result.get('task_id')
+
         logger.info(f"Started blog research task {task_id} for user {current_user.get('user_id')}")
-        
+
         return BlogResearchResponseModel(
             task_id=task_id,
             status="started",
             message=f"Blog research started for keywords: {', '.join(request.keywords)}"
         )
-        
     except Exception as e:
         logger.error(f"Failed to start blog research: {str(e)}")
         raise HTTPException(

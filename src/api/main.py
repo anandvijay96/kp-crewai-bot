@@ -19,25 +19,29 @@ from typing import Dict, Any
 # Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
+# Setup basic logging first
+logging.basicConfig(level=logging.INFO)
+temp_logger = logging.getLogger(__name__)
+
 # Import routes and modules with proper paths
 try:
-    from .routes import agents, campaigns, blogs, comments, tasks
+    from .routes import campaigns, blogs, comments
     from .routes.auth_new import router as auth_router
     from .websocket import websocket_manager, websocket_app
-    logger.info("✅ All route modules imported successfully")
+    temp_logger.info("✅ All route modules imported successfully")
 except ImportError as e:
-    logger.error(f"❌ Failed to import route modules: {e}")
+    temp_logger.error(f"❌ Failed to import route modules: {e}")
     # Fallback for direct execution
     import sys
     import os
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
     try:
-        from routes import campaigns, agents, blogs, comments
+        from routes import campaigns, blogs, comments
         from routes.auth_new import router as auth_router
         from websocket import websocket_manager, websocket_app
-        logger.info("✅ Route modules imported via fallback")
+        temp_logger.info("✅ Route modules imported via fallback")
     except ImportError as fallback_error:
-        logger.error(f"❌ Fallback import also failed: {fallback_error}")
+        temp_logger.error(f"❌ Fallback import also failed: {fallback_error}")
         raise
 
 # Import database and logging
