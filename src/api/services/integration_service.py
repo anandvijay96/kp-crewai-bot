@@ -20,6 +20,8 @@ from ..websocket import (
 )
 from httpx import AsyncClient
 import os
+from urllib.parse import urlparse
+from ...seo_automation.utils.database import db_manager, Blog, BlogPost
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +41,173 @@ class BunIntegrationService:
             response = await client.post(f'{self.BUN_URL}/api/scraping/batch-scrape', json={'urls': urls})
             response.raise_for_status()
             return response.json()
+    
+    async def scrape_and_store_url(self, url: str) -> Dict[str, Any]:
+        """Scrape URL via Bun service and store results in database."""
+        try:
+            # Get scraped data from Bun service
+            bun_response = await self.scrape_url(url)
+            
+            if not bun_response.get('success'):
+                return bun_response
+            
+            scraped_data = bun_response['data']
+            
+            # Store in database if connection is available
+            if db_manager.connection_available:
+                session = db_manager.get_session()
+                if session:
+                    try:
+                        # Extract domain from URL
+                        parsed_url = urlparse(scraped_data['url'])
+                        domain = parsed_url.netloc
+                        
+                        # Prepare blog data
+                        blog_data = {
+                            'url': scraped_data['url'],
+                            'domain': domain,
+                            'domain_authority': scraped_data.get('authorityScore', {}).get('domainAuthority'),
+                            'category': scraped_data.get('contentType', 'webpage'),
+                            'status': 'active',
+                            'analysis_metadata': {
+                                'scraped_at': scraped_data.get('scrapedAt'),
+                                'response_time': scraped_data.get('responseTime'),
+                                'word_count': scraped_data.get('metadata', {}).get('wordCount'),
+                                'link_count': scraped_data.get('metadata', {}).get('linkCount'),
+                                'image_count': scraped_data.get('metadata', {}).get('imageCount'),
+                                'authority_score': scraped_data.get('authorityScore')
+                            }
+                        }
+                        
+                        # Insert blog data
+                        blog = db_manager.insert_blog(session, blog_data)
+                        
+                        # Prepare blog post data (treating the main content as a post)
+                        post_data = {
+                            'blog_id': blog.id if blog else None,
+                            'url': scraped_data['url'],
+                            'title': scraped_data.get('title', ''),
+                            'content_summary': scraped_data.get('content', '')[:1000],  # First 1000 chars
+                            'word_count': scraped_data.get('metadata', {}).get('wordCount', 0),
+                            'has_comments': False,  # Would need to be determined
+                            'tags': [],  # Could be extracted from content
+                            'comment_worthiness_score': 0,  # Would be calculated
+                            'engagement_potential': 'medium',  # Default
+                            'analysis_data': {
+                                'links': scraped_data.get('links', []),
+                                'images': scraped_data.get('images', []),
+                                'metadata': scraped_data.get('metadata', {})
+                            },
+                            'analyzed_at': datetime.utcnow(),
+                            'status': 'analyzed'
+                        }
+                        
+                        # Insert blog post data
+                        post = db_manager.insert_blog_post(session, post_data)
+                        
+                        logger.info(f"Stored scraped data for {url} in database")
+                        
+                        # Add database IDs to response
+                        bun_response['data']['blog_id'] = blog.id if blog else None
+                        bun_response['data']['post_id'] = post.id if post else None
+                        
+                    except Exception as e:
+                        logger.error(f"Failed to store scraped data in database: {e}")
+                    finally:
+                        session.close()
+            
+            return bun_response
+            
+        except Exception as e:
+            logger.error(f"Error in scrape_and_store_url: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    async def batch_scrape_and_store(self, urls: List[str]) -> Dict[str, Any]:
+        """Batch scrape URLs via Bun service and store results in database."""
+        try:
+            # Get batch scraped data from Bun service
+            bun_response = await self.batch_scrape(urls)
+            
+            if not bun_response.get('success'):
+                return bun_response
+            
+            results = bun_response['data']['results']
+            stored_count = 0
+            
+            # Store successful results in database
+            if db_manager.connection_available:
+                session = db_manager.get_session()
+                if session:
+                    try:
+                        for result in results:
+                            if result.get('success'):
+                                try:
+                                    # Extract domain from URL
+                                    parsed_url = urlparse(result['url'])
+                                    domain = parsed_url.netloc
+                                    
+                                    # Prepare blog data
+                                    blog_data = {
+                                        'url': result['url'],
+                                        'domain': domain,
+                                        'domain_authority': result.get('authorityScore', {}).get('domainAuthority'),
+                                        'category': result.get('contentType', 'webpage'),
+                                        'status': 'active',
+                                        'analysis_metadata': {
+                                            'scraped_at': result.get('scrapedAt'),
+                                            'response_time': result.get('responseTime'),
+                                            'word_count': result.get('metadata', {}).get('wordCount'),
+                                            'authority_score': result.get('authorityScore')
+                                        }
+                                    }
+                                    
+                                    # Insert blog and post data
+                                    blog = db_manager.insert_blog(session, blog_data)
+                                    
+                                    post_data = {
+                                        'blog_id': blog.id if blog else None,
+                                        'url': result['url'],
+                                        'title': result.get('title', ''),
+                                        'content_summary': result.get('content', '')[:1000],
+                                        'word_count': result.get('metadata', {}).get('wordCount', 0),
+                                        'analysis_data': {
+                                            'links': result.get('links', []),
+                                            'metadata': result.get('metadata', {})
+                                        },
+                                        'analyzed_at': datetime.utcnow(),
+                                        'status': 'analyzed'
+                                    }
+                                    
+                                    post = db_manager.insert_blog_post(session, post_data)
+                                    
+                                    # Add database IDs to result
+                                    result['blog_id'] = blog.id if blog else None
+                                    result['post_id'] = post.id if post else None
+                                    
+                                    stored_count += 1
+                                    
+                                except Exception as e:
+                                    logger.error(f"Failed to store individual result for {result['url']}: {e}")
+                        
+                        logger.info(f"Stored {stored_count}/{len(results)} scraped results in database")
+                        
+                    except Exception as e:
+                        logger.error(f"Failed to store batch scraped data in database: {e}")
+                    finally:
+                        session.close()
+            
+            # Add storage summary to response
+            bun_response['data']['storage_summary'] = {
+                'total_results': len(results),
+                'stored_count': stored_count,
+                'database_available': db_manager.connection_available
+            }
+            
+            return bun_response
+            
+        except Exception as e:
+            logger.error(f"Error in batch_scrape_and_store: {e}")
+            return {'success': False, 'error': str(e)}
     def __init__(self):
         self.active_tasks: Dict[str, Dict[str, Any]] = {}
         self.agent_status: Dict[str, Dict[str, Any]] = {}

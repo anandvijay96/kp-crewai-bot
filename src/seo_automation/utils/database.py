@@ -6,12 +6,12 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Float, Boolean, JSON, Enum, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import structlog
 import enum
+import logging
 
 from ..config.settings import settings
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
@@ -137,28 +137,52 @@ class DatabaseManager:
                     conn.execute(text("SELECT 1"))
                 self.session_maker = sessionmaker(bind=self.engine)
                 self.connection_available = True
-                logger.info("database_manager_initialized", url=settings.database_url)
+                logger.info(f"Database manager initialized with URL: {settings.database_url}")
             except Exception as e:
-                logger.warning("database_connection_failed", error=str(e), url=settings.database_url)
+                logger.warning(f"Database connection failed: {str(e)}")
                 self.engine = None
                 self.session_maker = None
                 self.connection_available = False
         else:
-            logger.warning("no_database_url_configured")
+            logger.warning("No database URL configured")
     
     def create_tables(self):
         """Create all tables."""
         if self.engine:
             Base.metadata.create_all(self.engine)
-            logger.info("database_tables_created")
+            logger.info("Database tables created successfully")
         else:
-            logger.warning("cannot_create_tables_no_engine")
+            logger.warning("Cannot create tables - no database engine")
     
     def get_session(self):
         """Get database session."""
         if self.session_maker:
             return self.session_maker()
         return None
+
+    def insert_blog(self, session, blog_data: Dict[str, Any]) -> Optional[Blog]:
+        """Insert blog data into the database, or update if exists."""
+        blog = session.query(Blog).filter_by(url=blog_data['url']).first()
+        if not blog:
+            blog = Blog(**blog_data)
+            session.add(blog)
+        else:
+            for key, value in blog_data.items():
+                setattr(blog, key, value)
+        session.commit()
+        return blog
+
+    def insert_blog_post(self, session, post_data: Dict[str, Any]) -> Optional[BlogPost]:
+        """Insert blog post data into the database, or update if exists."""
+        post = session.query(BlogPost).filter_by(url=post_data['url']).first()
+        if not post:
+            post = BlogPost(**post_data)
+            session.add(post)
+        else:
+            for key, value in post_data.items():
+                setattr(post, key, value)
+        session.commit()
+        return post
 
 
 # Global database manager instance
