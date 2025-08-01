@@ -55,7 +55,9 @@ async def _execute_blog_research_task(task_id: str, search_query: str, request: 
         if not discovery_results.get('success'):
             raise Exception(discovery_results.get('error', discovery_results.get('message', "Unknown error")))
 
-        blogs = discovery_results.get('data', [])
+        # Extract blogs from the nested data structure
+        data = discovery_results.get('data', {})
+        blogs = data.get('blogs', []) if isinstance(data, dict) else []
         _active_tasks[task_id]['found_blogs'] = len(blogs)
         _active_tasks[task_id]['progress_percentage'] = 0.7
         _active_tasks[task_id]['current_step'] = f'Found {len(blogs)} blogs'
@@ -63,9 +65,28 @@ async def _execute_blog_research_task(task_id: str, search_query: str, request: 
         # Notify discovery completion
         await notify_task_progress(task_id=task_id, task_type='blog_research', progress=0.7, status='discovery_complete')
 
-        # Simulate analysis time
-        await asyncio.sleep(2)
+        # Process and store the blog results
+        processed_blogs = []
+        for blog in blogs:
+            processed_blog = {
+                "url": blog.get('url', ''),
+                "domain": blog.get('domain', ''),
+                "title": blog.get('title', ''),
+                "description": blog.get('snippet', ''),
+                "domain_authority": blog.get('domainAuthority', 0),
+                "page_authority": blog.get('pageAuthority', 0),
+                "category": "blog",
+                "publish_date": None,
+                "author": None,
+                "content_quality_score": 0.8,  # Default score
+                "comment_opportunities": ["General engagement"],
+                "discovery_source": "google_search",
+                "scraped_at": datetime.utcnow().isoformat()
+            }
+            processed_blogs.append(processed_blog)
+        
         _active_tasks[task_id]['validated_blogs'] = len(blogs)
+        _active_tasks[task_id]['results'] = processed_blogs  # Store the actual results
         _active_tasks[task_id]['progress_percentage'] = 1.0
         _active_tasks[task_id]['current_step'] = 'Complete'
         _active_tasks[task_id]['status'] = 'completed'
@@ -235,10 +256,10 @@ async def get_research_results(
                 detail=f"Research task {task_id} is not yet completed. Status: {progress['status']}"
             )
         
-        # For now, return empty results as we haven't implemented result storage
-        # This would be implemented with the BunIntegrationService to store and retrieve actual results
-        logger.info(f"Task {task_id} completed but result storage not yet implemented")
-        return []
+        # Return the stored results from the completed task
+        results = progress.get('results', [])
+        logger.info(f"Returning {len(results)} blog results for task {task_id}")
+        return results
         
     except HTTPException:
         raise
@@ -355,4 +376,83 @@ async def get_scraping_stats(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get scraping stats: {str(e)}"
+        )
+
+
+@router.get("/historical")
+async def get_historical_blogs(
+    page: int = 1,
+    page_size: int = 10,
+    current_user = Depends(get_current_user)
+):
+    """
+    Get previously discovered blogs with pagination
+    """
+    try:
+        import sqlite3
+        import json
+        from datetime import datetime
+        
+        # Connect to database
+        conn = sqlite3.connect('seo_automation.db')
+        cursor = conn.cursor()
+        
+        # Calculate offset
+        offset = (page - 1) * page_size
+        
+        # Get total count
+        cursor.execute('SELECT COUNT(*) FROM blog_posts')
+        total_count = cursor.fetchone()[0]
+        
+        # Get paginated blogs
+        cursor.execute('''
+            SELECT id, url, title, content_summary, has_comments, analysis_data, status, created_at 
+            FROM blog_posts 
+            ORDER BY created_at DESC 
+            LIMIT ? OFFSET ?
+        ''', (page_size, offset))
+        
+        rows = cursor.fetchall()
+        
+        blogs = []
+        for row in rows:
+            blog_id, url, title, summary, has_comments, analysis_data_str, status, created_at = row
+            
+            # Parse analysis data
+            analysis_data = {}
+            if analysis_data_str:
+                try:
+                    analysis_data = json.loads(analysis_data_str)
+                except json.JSONDecodeError:
+                    pass
+            
+            blogs.append({
+                "id": blog_id,
+                "url": url,
+                "title": title,
+                "content_summary": summary,
+                "has_comments": bool(has_comments),
+                "status": status,
+                "created_at": created_at,
+                "analysis_data": analysis_data
+            })
+        
+        conn.close()
+        
+        return {
+            "success": True,
+            "data": {
+                "blogs": blogs,
+                "total": total_count,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": (total_count + page_size - 1) // page_size
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get historical blogs: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get historical blogs: {str(e)}"
         )
