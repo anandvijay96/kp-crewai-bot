@@ -35,6 +35,16 @@ class BunIntegrationService:
             response = await client.post(f'{self.BUN_URL}/api/scraping/scrape', json={'url': url})
             response.raise_for_status()
             return response.json()
+    
+    async def discover_blogs(self, query: str, max_results: int = 10) -> Dict[str, Any]:
+        """Discover blogs using Google Search API via Bun service."""
+        async with AsyncClient() as client:
+            response = await client.post(
+                f'{self.BUN_URL}/api/scraping/blog-discovery',
+                json={'query': query, 'numResults': max_results}
+            )
+            response.raise_for_status()
+            return response.json()
 
     async def batch_scrape(self, urls: List[str]) -> Dict[str, Any]:
         async with AsyncClient() as client:

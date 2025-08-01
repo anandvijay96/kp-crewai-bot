@@ -25,8 +25,9 @@ class GoogleSearchService {
 
   constructor(config: ServiceConfig) {
     const googleConfig = config.searchEngines.google;
-    this.apiKey = googleConfig.apiKey || process.env.GOOGLE_SEARCH_API_KEY || '';
-    this.searchEngineId = googleConfig.searchEngineId || process.env.GOOGLE_SEARCH_CSE_ID || '';
+    // Prioritize explicitly passed config over environment variables for testability
+    this.apiKey = (googleConfig.apiKey !== undefined) ? googleConfig.apiKey : (process.env.GOOGLE_SEARCH_API_KEY || '');
+    this.searchEngineId = (googleConfig.searchEngineId !== undefined) ? googleConfig.searchEngineId : (process.env.GOOGLE_SEARCH_CSE_ID || '');
     this.dailyLimit = googleConfig.dailyLimit || 100;
     
     // Validate configuration

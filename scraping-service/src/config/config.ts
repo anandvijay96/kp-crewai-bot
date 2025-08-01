@@ -13,7 +13,7 @@ export const defaultBrowserConfig: BrowserConfig = {
 
 // Default service configuration
 export const defaultServiceConfig: ServiceConfig = {
-  port: parseInt(process.env.PORT || '3001', 10),
+  port: parseInt(process.env.PORT || '3002', 10),
   pythonBackendUrl: process.env.PYTHON_BACKEND_URL || 'http://localhost:8001',
   browser: defaultBrowserConfig,
   rateLimit: {

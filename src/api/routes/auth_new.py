@@ -7,13 +7,13 @@ FastAPI routes for user authentication using JWT and UserService.
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from datetime import timedelta
-from ..models.api_models import ApiResponse
-from ..models.user import (
+from src.api.models.api_models import ApiResponse
+from src.api.models.user import (
     UserLogin, UserCreate, UserResponse, Token, TokenRefresh, 
     PasswordReset, PasswordChange
 )
-from ..auth.jwt_handler import JWTHandler, get_current_user, get_admin_user, ACCESS_TOKEN_EXPIRE_MINUTES
-from ..services.user_service import UserService
+from src.api.auth.jwt_handler import JWTHandler, get_current_user, get_admin_user, ACCESS_TOKEN_EXPIRE_MINUTES
+from src.api.services.user_service import UserService
 from typing import Dict, Any, List
 
 router = APIRouter(tags=["authentication"])

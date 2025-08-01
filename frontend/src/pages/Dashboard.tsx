@@ -5,11 +5,23 @@ import React, { useState, useEffect } from 'react';
 import { api, ApiResponse } from '@/utils/apiClient';
 
 const fetchDashboardData = async (): Promise<DashboardData> => {
-  const response: ApiResponse<DashboardData> = await api.get('/api/dashboard/data');
-  if (response.success) {
-    return response.data;
-  } else {
-    throw new Error(response.message);
+  // Try public request first (no authentication required)
+  try {
+    const response: ApiResponse<DashboardData> = await api.public('/api/dashboard/data');
+    if (response.success) {
+      return response.data;
+    } else {
+      throw new Error(response.message);
+    }
+  } catch (error) {
+    // If public request fails, try authenticated request
+    console.warn('Public dashboard request failed, trying authenticated request:', error);
+    const response: ApiResponse<DashboardData> = await api.get('/api/dashboard/data');
+    if (response.success) {
+      return response.data;
+    } else {
+      throw new Error(response.message);
+    }
   }
 };
 

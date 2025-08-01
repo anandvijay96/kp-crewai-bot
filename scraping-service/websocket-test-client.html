@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test Client</title>
+    <style>
+        body { font-family: sans-serif; }
+        #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
+        .message { margin-bottom: 5px; }
+        .progress-bar { width: 100%; background-color: #f3f3f3; border-radius: 5px; }
+        .progress { width: 0%; height: 20px; background-color: #4CAF50; border-radius: 5px; text-align: center; color: white; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Test Client</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    <input type="text" id="query" placeholder="Enter search query">
+    <button id="send">Search</button>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const messagesDiv = document.getElementById('messages');
+        const queryInput = document.getElementById('query');
+        const sendButton = document.getElementById('send');
+
+        const ws = new WebSocket('ws://localhost:3002');
+
+        ws.onopen = () => {
+            statusDiv.textContent = 'Connected';
+        };
+
+        ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+
+            if (message.type === 'progress_update') {
+                const progress = message.data.progress;
+                messageDiv.innerHTML = `
+                    <div><strong>Task ID:</strong> ${message.taskId}</div>
+                    <div><strong>Message:</strong> ${message.data.message}</div>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: ${progress}%">${progress}%</div>
+                    </div>
+                `;
+            } else {
+                messageDiv.textContent = JSON.stringify(message, null, 2);
+            }
+
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        };
+
+        ws.onclose = () => {
+            statusDiv.textContent = 'Disconnected';
+        };
+
+        sendButton.addEventListener('click', () => {
+            const query = queryInput.value;
+            if (query) {
+                fetch('http://localhost:3002/api/scraping/blog-discovery', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query })
+                });
+            }
+        });
+    </script>
+</body>
+</html>
