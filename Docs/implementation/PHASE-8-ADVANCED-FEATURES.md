@@ -96,9 +96,11 @@ class AdvancedCommentDetector:
         return self.engagement_model.predict(factors)
 ```
 
-### Phase 8B: Production Deployment & Infrastructure (Week 2)
+### Phase 8B: Full Production Deployment & VM Migration (Week 2)
+**Trigger**: After successful internal DM team testing and feedback collection
+**Objective**: Migrate from free tier hosting to unlimited VM deployment
 
-#### 8B.1 Database Migration to PostgreSQL
+#### 8B.1 VM Infrastructure Setup & Database Migration
 ```python
 # Production database configuration
 DATABASE_CONFIG = {

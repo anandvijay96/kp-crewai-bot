@@ -162,23 +162,38 @@ interface BlogAnalytics {
 }
 ```
 
-#### 7B.3 Export and Reporting
+#### 7B.3 Export and Reporting - **DM Team Priority**
 ```typescript
 interface ExportSystem {
-  formats: ['csv', 'excel', 'pdf'];
+  formats: ['csv', 'excel']; // PDF removed for Phase 7 - focus on DM team needs
   
-  reportTypes: {
-    campaignReport: CampaignReportData;
-    blogAnalysisReport: BlogReportData;
-    commentPerformanceReport: CommentReportData;
-    domainAnalysisReport: DomainReportData;
+  // Priority: Comment export for manual DM team submission
+  commentExport: {
+    batchExport: boolean;
+    includeFields: {
+      blogUrl: boolean;
+      blogTitle: boolean;
+      domainAuthority: boolean;
+      generatedComment: boolean;
+      qualityScore: boolean;
+      keywords: boolean;
+      generatedAt: boolean;
+    };
+    dateFiltering: DateRange;
+    qualityFiltering: QualityFilter;
   };
   
-  scheduling: {
-    dailyReports: boolean;
-    weeklyReports: boolean;
-    monthlyReports: boolean;
-    customSchedule: CronSchedule;
+  reportTypes: {
+    commentPerformanceReport: CommentReportData; // Primary focus
+    blogAnalysisReport: BlogReportData;
+    campaignReport: CampaignReportData;
+  };
+  
+  // Simplified scheduling for internal team
+  exportHistory: {
+    recentExports: ExportHistoryItem[];
+    downloadLinks: string[];
+    teamAccessLog: AccessLogItem[];
   };
 }
 ```
@@ -312,10 +327,49 @@ interface AgentSettings {
 | **Week 1** | Comments Page | Full comment generation, management, and analytics UI |
 | **Week 2** | Analytics Page | Campaign analytics, blog analytics, export functionality |
 | **Week 3** | Settings Page | User settings, system config, agent configuration |
-| **Week 4** | Polish & Integration | Performance optimization, real-time features, testing |
+| **Week 4** | Polish & Deployment | Performance optimization, production deployment for DM team |
 
 **Total Duration**: 4 weeks  
-**Target Completion**: August 29, 2025  
+**Target Completion**: August 29, 2025
+
+## 🚀 Phase 7 Deployment Strategy - Internal Team Access
+
+### Deployment Objectives
+**Primary Goal**: Deploy completed application for internal DM team to access and test CSV/Excel export workflow
+
+#### Hosting Strategy (Free Tier for Internal Testing)
+- **Frontend**: Vercel Free Tier (React app deployment)
+- **Backend**: Render Free Tier (Python FastAPI service)
+- **Scraping Service**: Railway Free Tier (Bun microservice)
+
+#### Key Features for DM Team
+1. **CSV/Excel Export**: Primary functionality for manual comment submission
+2. **Comment Generation Interface**: AI-powered comment creation
+3. **Blog Research Results**: Real scraped blog data with authority scores
+4. **User Authentication**: Secure access for team members
+5. **Real-time Updates**: Live progress tracking for operations
+
+#### Free Tier Considerations
+```yaml
+Expected Limitations:
+  - Render backend sleeps after 15 minutes (cold start delays)
+  - Railway $5 credit limit (monitoring required)
+  - Vercel 100GB bandwidth limit (sufficient for internal use)
+
+Workarounds:
+  - Keep-alive pings to prevent backend sleep
+  - Usage monitoring dashboard
+  - Optimized bundle sizes for faster loads
+  - Caching strategies for better performance
+```
+
+#### Post-Deployment Plan
+- **DM Team Training**: Walkthrough of comment generation and export process
+- **Feedback Collection**: Gather input for improvements before full production
+- **Usage Monitoring**: Track performance and identify optimization needs
+- **Migration Planning**: Prepare for future VM deployment (unlimited hosting)
+
+**Detailed Deployment Plan**: See `PHASE-7-DEPLOYMENT-PLAN.md` for complete implementation guide
 
 ## 🚀 Expected Outcomes
 
