@@ -10,16 +10,26 @@
 Transform the CrewAI KP Bot from a complete application to an enterprise-grade SEO automation platform with advanced features, production deployment, and scalability optimizations.
 
 ### Primary Goals
-1. **Advanced Analytics & Intelligence**: Machine learning insights and predictive analytics
-2. **Production Deployment**: PostgreSQL migration, Docker containerization, cloud deployment
-3. **Enhanced Filtering & Automation**: Smart domain scheduling, advanced comment detection
-4. **Enterprise Features**: Multi-user support, role-based access, API rate limiting
-5. **Performance & Monitoring**: Advanced monitoring, alerting, and optimization
-6. **Competitive Differentiation**: Unique features that set us apart
+1. **Manual Entry for Comment Generation**: Allow users to provide a blog URL directly, bypassing DA & PA checks.
+2. **Import Option for Bulk Comment Generation**: Enable CSV/Excel import for comment generation for multiple URLs.
+3. **Advanced Analytics & Intelligence**: Machine learning insights and predictive analytics
+4. **Production Deployment**: PostgreSQL migration, Docker containerization, cloud deployment
+5. **Enhanced Filtering & Automation**: Smart domain scheduling, advanced comment detection
+6. **Enterprise Features**: Multi-user support, role-based access, API rate limiting
+7. **Performance & Monitoring**: Advanced monitoring, alerting, and optimization
+8. **Competitive Differentiation**: Unique features that set us apart
 
 ## 📋 Implementation Plan
 
-### Phase 8A: Advanced Analytics & Intelligence (Week 1)
+### Phase 8A: Manual and Bulk Comment Generation (Week 1)
+
+#### 8A.1 Manual Comment Generation
+- Feature for inputting a single blog URL for comment generation directly.
+
+#### 8A.2 Bulk Comment Generation via Import
+- Provide functionality for importing a list of blog URLs in CSV/Excel format for batch processing of comments.
+
+### Phase 8B: Advanced Analytics & Intelligence (Week 2)
 
 #### 8A.1 Machine Learning Insights
 ```python

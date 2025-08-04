@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 class BunIntegrationService:
     """Service for integrating Python backend with Bun microservice."""
 
-    BUN_URL = os.getenv('BUN_MICROSERVICE_URL', 'http://localhost:3001')
+    BUN_URL = os.getenv('BUN_MICROSERVICE_URL', 'http://localhost:3002')
 
     async def scrape_url(self, url: str) -> Dict[str, Any]:
         async with AsyncClient() as client:
