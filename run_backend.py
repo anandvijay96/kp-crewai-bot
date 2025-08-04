@@ -127,6 +127,13 @@ def setup_routes():
         logger.warning(f"⚠️ Could not load blog routes: {e}")
         
     try:
+        from api.routes.dashboard import router as dashboard_router
+        app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
+        logger.info("✅ Dashboard routes loaded")
+    except ImportError as e:
+        logger.warning(f"⚠️ Could not load dashboard routes: {e}")
+        
+    try:
         from api.routes.comments import router as comments_router
         app.include_router(comments_router, prefix="/api/comments", tags=["Comment Generation"])
         logger.info("✅ Comment routes loaded")

@@ -66,7 +66,7 @@ export class AuthorityScorer {
       // Return fallback score
       return this.getFallbackScore(url);
     } finally {
-      await browserManager.closePage(page);
+await browserManager.ensurePageClosure(page);
     }
   }
 

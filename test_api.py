@@ -211,6 +211,90 @@ async def research_blogs(request: dict):
         "cost": 2.45
     }
 
+@app.get("/api/blogs/historical")
+async def get_historical_blogs(
+    page: int = 1,
+    page_size: int = 10
+):
+    """Get previously discovered blogs with pagination - TEST endpoint"""
+    try:
+        import sqlite3
+        import json
+        
+        logger.info(f"API called with page={page}, page_size={page_size}")
+        
+        # Connect to database
+        conn = sqlite3.connect('seo_automation.db')
+        cursor = conn.cursor()
+        
+        # Calculate offset
+        offset = (page - 1) * page_size
+        
+        # Get total count
+        cursor.execute('SELECT COUNT(*) FROM blog_posts')
+        total_count = cursor.fetchone()[0]
+        
+        logger.info(f"Total blogs in database: {total_count}")
+        
+        # Get paginated blogs
+        cursor.execute('''
+            SELECT id, url, title, content_summary, has_comments, analysis_data, status, created_at 
+            FROM blog_posts 
+            ORDER BY created_at DESC 
+            LIMIT ? OFFSET ?
+        ''', (page_size, offset))
+        
+        rows = cursor.fetchall()
+        
+        logger.info(f"Retrieved {len(rows)} rows for page {page} (offset {offset})")
+        
+        blogs = []
+        for row in rows:
+            blog_id, url, title, summary, has_comments, analysis_data_str, status, created_at = row
+            
+            # Parse analysis data
+            analysis_data = {}
+            if analysis_data_str:
+                try:
+                    analysis_data = json.loads(analysis_data_str)
+                except json.JSONDecodeError:
+                    pass
+            
+            blogs.append({
+                "id": blog_id,
+                "url": url,
+                "title": title,
+                "content_summary": summary,
+                "has_comments": bool(has_comments),
+                "status": status,
+                "created_at": created_at,
+                "analysis_data": analysis_data
+            })
+        
+        conn.close()
+        
+        response_data = {
+            "success": True,
+            "data": {
+                "blogs": blogs,
+                "total": total_count,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": (total_count + page_size - 1) // page_size
+            }
+        }
+        
+        logger.info(f"Returning response with {len(blogs)} blogs, total_pages: {response_data['data']['total_pages']}")
+        
+        return response_data
+        
+    except Exception as e:
+        logger.error(f"Failed to get historical blogs: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get historical blogs: {str(e)}"
+        )
+
 # ============================================================================
 # Comment Generation Endpoints (Mock)
 # ============================================================================

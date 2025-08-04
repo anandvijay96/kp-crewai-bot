@@ -529,7 +529,45 @@ router.post('/blog-discovery', async (req: Request, res: Response) => {
             });
           });
         } else {
-          console.log(`❌ Filtered out ${blogData.title} - DA: ${domainAuthority}, PA: ${pageAuthority} below threshold`);
+          // Record filtered blog with reason
+          const filterReason = [];
+          if (domainAuthority < 30) filterReason.push(`DA ${domainAuthority} < 30`);
+          if (pageAuthority < 30) filterReason.push(`PA ${pageAuthority} < 30`);
+          const reasonText = filterReason.join(', ');
+          
+          console.log(`❌ Filtered out ${blogData.title} - ${reasonText}`);
+          
+          // Insert into filtered_blogs table
+          await new Promise((resolve, reject) => {
+            db.run(`
+              INSERT INTO filtered_blogs (
+                url, title, domain, domain_authority, page_authority, 
+                filter_reason, min_da_threshold, min_pa_threshold, 
+                discovered_at, analysis_data
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [
+              blogData.url,
+              blogData.title,
+              blogData.domain,
+              domainAuthority,
+              pageAuthority,
+              reasonText,
+              30, // min_da_threshold
+              30, // min_pa_threshold
+              blogData.discoveredAt,
+              JSON.stringify({
+                snippet: blogData.snippet,
+                discoveredAt: blogData.discoveredAt
+              })
+            ], function(err) {
+              if (err) {
+                console.error('Filtered blog insert error:', err);
+                reject(err);
+              } else {
+                resolve(this.lastID);
+              }
+            });
+          });
         }
       }
       

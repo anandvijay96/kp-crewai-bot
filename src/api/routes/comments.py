@@ -171,7 +171,7 @@ async def list_generated_comments(
     Returns:
         BaseResponse: List of generated comments
     """
-    logger.info(f"Listing generated comments for user: {current_user['username']}")
+    logger.info(f"Listing generated comments for user: {current_user['user_id']}")
     
     try:
         # Mock generated comments data
@@ -356,7 +356,7 @@ async def review_comment(
         # Mock review processing
         review_result = {
             "comment_id": comment_id,
-            "reviewer": current_user["username"],
+            "reviewer": current_user["user_id"],
             "decision": review_data.get("decision", "approved"),
             "feedback": review_data.get("feedback", ""),
             "quality_adjustments": review_data.get("quality_adjustments", {}),

@@ -8,8 +8,6 @@ Provides aggregated data for the Dashboard.
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any
 import logging
-from ..services.integration_service import BunIntegrationService
-
 # Import get_current_user with fallback
 try:
     from ..auth import get_current_user
@@ -25,7 +23,7 @@ router = APIRouter()
 # Setup logger
 logger = logging.getLogger(__name__)
 
-@router.get("/dashboard/data")
+@router.get("/data")
 async def get_dashboard_data(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> Dict[str, Any]:
@@ -41,20 +39,54 @@ async def get_dashboard_data(
     logger.info(f"Fetching dashboard data for user: {current_user['email']}")
 
     try:
-        # Initialize Bun integration service
-        bun_service = BunIntegrationService()
-        
-        # Fetch real-time data
-        scraping_stats = await bun_service.scrape_url("https://example.com")
-        
-        # Return transformed data
+        # Return mock dashboard data for MVP
         return {
-            "activeCampaigns": None,
-            "blogsDiscovered": len(scraping_stats.get('data', {}).get('links', [])),
-            "commentsGenerated": len(scraping_stats.get('data', {}).get('comments', [])),
-            "successRate": 100,  # Real success metrics to be calculated
-            "recentCampaigns": scraping_stats.get('data', {}).get('recentCampaigns', []),
-            "topBlogs": scraping_stats.get('data', {}).get('topBlogs', []),
+            "activeCampaigns": 3,
+            "blogsDiscovered": 247,
+            "commentsGenerated": 156,
+            "successRate": 87.5,
+            "recentCampaigns": [
+                {
+                    "id": "campaign-1",
+                    "name": "SEO Tools Campaign",
+                    "status": "active",
+                    "progress": 68
+                },
+                {
+                    "id": "campaign-2", 
+                    "name": "Digital Marketing Blog Outreach",
+                    "status": "active",
+                    "progress": 42
+                },
+                {
+                    "id": "campaign-3",
+                    "name": "E-commerce SEO Comments", 
+                    "status": "paused",
+                    "progress": 23
+                }
+            ],
+            "topBlogs": [
+                {
+                    "domain": "searchengineland.com",
+                    "comments": 23,
+                    "quality": 0.91
+                },
+                {
+                    "domain": "moz.com", 
+                    "comments": 18,
+                    "quality": 0.89
+                },
+                {
+                    "domain": "backlinko.com",
+                    "comments": 15,
+                    "quality": 0.85
+                },
+                {
+                    "domain": "semrush.com",
+                    "comments": 12,
+                    "quality": 0.87
+                }
+            ]
         }
 
     except Exception as e:

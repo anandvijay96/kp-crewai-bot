@@ -16,29 +16,9 @@ from ..models import (
     BaseResponse,
     PaginationParams
 )
-from ..auth import get_current_user, get_current_user_optional
-from ..services.blog_research_service import BlogResearchService
-
+from ..auth import get_current_user
 # Initialize logger first
 logger = logging.getLogger(__name__)
-
-# Import existing agents with proper error handling
-try:
-    import sys
-    import os
-    # Add src to path for imports
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    src_dir = os.path.join(current_dir, '..', '..', '..')
-    sys.path.append(src_dir)
-    
-    from ...seo_automation.agents.enhanced_blog_researcher import EnhancedBlogResearcherAgent
-    logger.info("✅ Successfully imported EnhancedBlogResearcherAgent")
-except ImportError as e:
-    logger.warning(f"⚠️ Could not import real blog researcher agent: {e}. Using mock implementation.")
-    EnhancedBlogResearcherAgent = None
-except Exception as e:
-    logger.error(f"❌ Unexpected error importing agent: {e}. Using mock implementation.")
-    EnhancedBlogResearcherAgent = None
 
 router = APIRouter()
 
@@ -106,17 +86,40 @@ async def research_blogs(
             "exclude_domains": request.exclude_domains or []
         }
         
-        # Use BlogResearchService for research and database persistence
-        result = BlogResearchService.research_blogs(research_params, current_user["id"])
+        # Mock blog research results for MVP
+        mock_blogs = [
+            {
+                "id": "blog-research-1",
+                "url": "https://searchengineland.com/seo-trends-2024",
+                "title": "SEO Trends 2024: What's Coming Next",
+                "domain": "searchengineland.com",
+                "quality_score": 0.92,
+                "authority_score": 0.94,
+                "discovered_at": datetime.utcnow().isoformat(),
+                "campaign_id": None,
+                "status": "discovered"
+            },
+            {
+                "id": "blog-research-2",
+                "url": "https://moz.com/advanced-seo-techniques",
+                "title": "Advanced SEO Techniques for 2024",
+                "domain": "moz.com",
+                "quality_score": 0.89,
+                "authority_score": 0.92,
+                "discovered_at": datetime.utcnow().isoformat(),
+                "campaign_id": None,
+                "status": "discovered"
+            }
+        ]
         
         return BlogResearchResponse(
-            blogs=result["blogs"],
-            total_discovered=result["total_discovered"],
-            quality_filtered=result["quality_filtered"],
-            keywords_used=result["keywords_used"],
-            execution_time=result["execution_time"],
-            cost=result["cost"],
-            message="Blog research completed successfully"
+            blogs=mock_blogs,
+            total_discovered=len(mock_blogs),
+            quality_filtered=len(mock_blogs),
+            keywords_used=request.keywords,
+            execution_time=3.2,
+            cost=0.15,
+            message="Blog research completed successfully (mock data)"
         )
         
     except Exception as e:
@@ -124,6 +127,95 @@ async def research_blogs(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to research blogs: {str(e)}"
+        )
+
+@router.get("/historical", response_model=BaseResponse)
+async def get_historical_blogs(
+    pagination: PaginationParams = Depends(),
+    domain_filter: Optional[str] = None,
+    min_quality: Optional[float] = None,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+) -> BaseResponse:
+    """
+    Get historical blogs with pagination (for DiscoveredBlogs frontend page).
+    
+    Args:
+        pagination: Pagination parameters
+        domain_filter: Optional domain filter
+        min_quality: Minimum quality score filter
+        current_user: Authenticated user
+        
+    Returns:
+        BaseResponse: List of historical blogs
+    """
+    logger.info(f"Getting historical blogs for user: {current_user['user_id']}")
+    
+    try:
+        # Mock historical blogs data with more entries for pagination testing
+        all_blogs = []
+        
+        # Generate sample data for multiple pages
+        domains = ["searchengineland.com", "moz.com", "backlinko.com", "semrush.com", "ahrefs.com", 
+                  "searchenginejournal.com", "contentmarketinginstitute.com", "hubspot.com", 
+                  "neilpatel.com", "marketingland.com"]
+        
+        for i in range(100):  # Generate 100 blogs for pagination testing
+            domain = domains[i % len(domains)]
+            quality_score = 0.75 + (i % 20) * 0.01  # Vary quality scores
+            authority_score = 0.8 + (i % 15) * 0.01
+            
+            blog = {
+                "id": f"blog-{i+1}",
+                "url": f"https://{domain}/article-{i+1}",
+                "title": f"{domain.split('.')[0].title()} Article {i+1}",
+                "domain": domain,
+                "quality_score": round(quality_score, 2),
+                "authority_score": round(authority_score, 2),
+                "discovered_at": datetime.utcnow().isoformat(),
+                "campaign_id": f"campaign-{(i % 3) + 1}",
+                "status": "analyzed" if i % 2 == 0 else "pending"
+            }
+            all_blogs.append(blog)
+        
+        # Apply filters
+        filtered_blogs = all_blogs
+        
+        if domain_filter:
+            filtered_blogs = [
+                blog for blog in filtered_blogs 
+                if domain_filter.lower() in blog["domain"].lower()
+            ]
+        
+        if min_quality:
+            filtered_blogs = [
+                blog for blog in filtered_blogs 
+                if blog["quality_score"] >= min_quality
+            ]
+        
+        # Apply pagination
+        start_idx = (pagination.page - 1) * pagination.page_size
+        end_idx = start_idx + pagination.page_size
+        paginated_blogs = filtered_blogs[start_idx:end_idx]
+        
+        total_count = len(filtered_blogs)
+        total_pages = (total_count + pagination.page_size - 1) // pagination.page_size
+        
+        return BaseResponse(
+            message="Historical blogs retrieved successfully",
+            **{
+                "blogs": paginated_blogs,
+                "total": total_count,
+                "page": pagination.page,
+                "page_size": pagination.page_size,
+                "total_pages": total_pages
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Historical blogs error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve historical blogs: {str(e)}"
         )
 
 @router.get("/", response_model=BaseResponse)
@@ -145,7 +237,7 @@ async def list_discovered_blogs(
     Returns:
         BaseResponse: List of discovered blogs
     """
-    logger.info(f"Listing discovered blogs for user: {current_user['username']}")
+    logger.info(f"Listing discovered blogs for user: {current_user['user_id']}")
     
     try:
         # Mock discovered blogs data

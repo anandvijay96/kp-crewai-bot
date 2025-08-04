@@ -141,17 +141,68 @@ export class BrowserManager {
     });
 
     page.on('error', (error) => {
-      console.error('Page error:', error);
+      // Only log critical browser errors, not target page errors
+      if (error.message && !error.message.includes('target closed')) {
+        console.error('Browser page error:', error.message);
+      }
     });
 
     page.on('pageerror', (error) => {
-      console.error('Page script error:', error);
+      // Filter out common website JavaScript errors that don't affect scraping
+      const errorMessage = error.message || error.toString();
+      
+      // Skip logging common React/website errors that don't affect our scraping
+      if (errorMessage.includes('Minified React error') ||
+          errorMessage.includes('ChunkLoadError') ||
+          errorMessage.includes('ResizeObserver loop limit exceeded') ||
+          errorMessage.includes('Non-Error promise rejection captured') ||
+          errorMessage.includes('fbq is not defined') ||
+          errorMessage.includes('gtag is not defined') ||
+          errorMessage.includes('dataLayer is not defined') ||
+          errorMessage.includes('Script error') ||
+          errorMessage.includes('Unexpected token') && errorMessage.includes('jsonFeed')) {
+        // These are target website errors, not our scraping errors - ignore them
+        return;
+      }
+      
+      // Only log errors that might actually affect our scraping functionality
+      console.warn('Target page script issue (may not affect scraping):', errorMessage.substring(0, 200));
     });
   }
 
   async closePage(page: Page): Promise<void> {
     try {
-      await page.close();
+      if (!page.isClosed()) {
+        await page.close();
+        this.activePagesCount--;
+        console.log('✅ Page closed successfully');
+      }
+    } catch (error) {
+      console.error('Error closing page:', error);
+      // Force decrement even if close failed
+      this.activePagesCount--;
+    }
+  }
+
+  async ensurePageClosure(page: Page, retryCount: number = 3): Promise<void> {
+    for (let attempt = 0; attempt < retryCount; attempt++) {
+      try {
+        if (!page.isClosed()) {
+          await page.close();
+          console.log('✅ Page closed successfully');
+          return;
+        }
+        return; // Already closed
+      } catch (error) {
+        console.error('Error closing page, retrying:', error);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    console.error('Failed to close page after retries');
+    try {
+      if (!page.isClosed()) {
+        await page.close();
+      }
     } catch (error) {
       console.error('Error closing page:', error);
     }
