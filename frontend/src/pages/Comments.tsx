@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { api } from '@/utils/apiClient'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 
@@ -40,14 +41,9 @@ export function Comments() {
   const fetchComments = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/comments/', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setComments(data.comments || [])
+      const response = await api.get('/api/comments/')
+      if (response.success && response.data) {
+        setComments(response.data.comments || [])
       }
     } catch (error) {
       console.error('Failed to fetch comments:', error)
@@ -59,17 +55,10 @@ export function Comments() {
   const generateComments = async () => {
     try {
       setGenerating(true)
-      const response = await fetch('/api/comments/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(generationForm)
-      })
+      const response = await api.post('/api/comments/generate', generationForm)
       
-      if (response.ok) {
-        await response.json()
+      if (response.success) {
+        console.log('Comments generated successfully:', response.message)
         await fetchComments() // Refresh the comments list
         setGenerationForm({
           blog_url: '',
@@ -125,6 +114,15 @@ export function Comments() {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
           Generate New Comments
         </h2>
+        <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Manual Entry Feature</h3>
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            Enter any blog URL directly to generate AI-powered comments. No domain authority checks required.
+          </p>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+            Examples: Medium articles, dev.to posts, company blogs, news articles, etc.
+          </p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -135,8 +133,12 @@ export function Comments() {
               value={generationForm.blog_url}
               onChange={(e) => setGenerationForm({ ...generationForm, blog_url: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              placeholder="https://example.com/blog-post"
+              placeholder="https://medium.com/@author/seo-tips or https://dev.to/user/article-title"
+              required
             />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Enter any blog URL. We'll analyze the content and generate relevant comments.
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -168,6 +170,24 @@ export function Comments() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Keywords (Optional)
+            </label>
+            <input
+              type="text"
+              value={generationForm.keywords?.join(', ') || ''}
+              onChange={(e) => setGenerationForm({ 
+                ...generationForm, 
+                keywords: e.target.value.split(',').map(k => k.trim()).filter(k => k) 
+              })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="SEO, content marketing, digital strategy"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Comma-separated keywords to focus on in the comments
+            </p>
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Custom Instructions (Optional)
             </label>
             <textarea
@@ -175,8 +195,11 @@ export function Comments() {
               onChange={(e) => setGenerationForm({ ...generationForm, custom_instructions: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               rows={3}
-              placeholder="Any specific instructions for comment generation..."
+              placeholder="e.g., 'Focus on mobile SEO aspects' or 'Include personal experience examples'"
             />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Specific instructions to guide comment generation
+            </p>
           </div>
         </div>
         <div className="mt-4 flex gap-2">
