@@ -18,6 +18,7 @@ interface ApiResponse<T = any> {
 interface RequestConfig extends RequestInit {
   requireAuth?: boolean;
   skipAuthRefresh?: boolean;
+  params?: Record<string, any>;
 }
 
 interface PaginatedResponse<T> {
@@ -130,9 +131,9 @@ class ApiClient {
    * Create request headers
    */
   private createHeaders(config: RequestConfig = {}): HeadersInit {
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...config.headers,
+      ...(config.headers as Record<string, string> || {}),
     };
 
     // Add authorization header if required and token is available
@@ -147,6 +148,26 @@ class ApiClient {
   }
 
   /**
+   * Build URL with query parameters
+   */
+  private buildUrl(url: string, params?: Record<string, any>): string {
+    const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
+    
+    if (!params || Object.keys(params).length === 0) {
+      return fullUrl;
+    }
+
+    const urlObj = new URL(fullUrl);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        urlObj.searchParams.set(key, String(value));
+      }
+    });
+    
+    return urlObj.toString();
+  }
+
+  /**
    * Make HTTP request with timeout and error handling
    */
   private async makeRequest<T = any>(
@@ -157,7 +178,7 @@ class ApiClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
-      const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
+      const fullUrl = this.buildUrl(url, config.params);
       
       const response = await fetch(fullUrl, {
         ...config,

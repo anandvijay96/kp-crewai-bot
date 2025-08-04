@@ -1,4 +1,3 @@
-import { apiClient } from '@/utils/apiClient';
 
 export interface WebSocketMessage {
   type: string;

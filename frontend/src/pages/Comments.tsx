@@ -69,7 +69,7 @@ export function Comments() {
       })
       
       if (response.ok) {
-        const data = await response.json()
+        await response.json()
         await fetchComments() // Refresh the comments list
         setGenerationForm({
           blog_url: '',

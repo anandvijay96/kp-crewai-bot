@@ -1,14 +1,15 @@
 import { Activity, TrendingUp, MessageSquare, Target } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
+import { useNavigate } from 'react-router-dom'
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { api, ApiResponse } from '@/utils/apiClient';
 
 const fetchDashboardData = async (): Promise<DashboardData> => {
   // Try public request first (no authentication required)
   try {
     const response: ApiResponse<DashboardData> = await api.public('/api/dashboard/data');
-    if (response.success) {
+    if (response.success && response.data) {
       return response.data;
     } else {
       throw new Error(response.message);
@@ -17,7 +18,7 @@ const fetchDashboardData = async (): Promise<DashboardData> => {
     // If public request fails, try authenticated request
     console.warn('Public dashboard request failed, trying authenticated request:', error);
     const response: ApiResponse<DashboardData> = await api.get('/api/dashboard/data');
-    if (response.success) {
+    if (response.success && response.data) {
       return response.data;
     } else {
       throw new Error(response.message);
@@ -35,6 +36,7 @@ interface DashboardData {
 }
 
 export function Dashboard() {
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +64,7 @@ export function Dashboard() {
       change: '+2 from last month', // TODO: Calculate from historical data
       icon: Target,
       color: 'text-blue-600',
+      route: '/campaigns',
     },
     {
       title: 'Blogs Discovered',
@@ -69,6 +72,7 @@ export function Dashboard() {
       change: '+15% from last week', // TODO: Calculate from historical data
       icon: Activity,
       color: 'text-green-600',
+      route: '/discovered-blogs',
     },
     {
       title: 'Comments Generated',
@@ -76,6 +80,7 @@ export function Dashboard() {
       change: '+8% from last week', // TODO: Calculate from historical data
       icon: MessageSquare,
       color: 'text-purple-600',
+      route: '/comments',
     },
     {
       title: 'Success Rate',
@@ -83,6 +88,7 @@ export function Dashboard() {
       change: '+2.3% from last month', // TODO: Calculate from historical data
       icon: TrendingUp,
       color: 'text-orange-600',
+      route: '/analytics',
     },
   ];
 
@@ -103,7 +109,12 @@ export function Dashboard() {
         {stats.map((stat) => {
           const Icon = stat.icon
           return (
-            <Card key={stat.title} hover>
+            <Card 
+              key={stat.title} 
+              hover 
+              onClick={() => navigate(stat.route)}
+              className="cursor-pointer transition-transform hover:scale-105"
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   {stat.title}

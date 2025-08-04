@@ -3,6 +3,7 @@ import {
   Home, 
   Zap, 
   Search, 
+  Database,
   MessageSquare, 
   BarChart3, 
   Settings as SettingsIcon 
@@ -14,6 +15,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Campaigns', href: '/campaigns', icon: Zap },
   { name: 'Blog Research', href: '/research', icon: Search },
+  { name: 'Discovered Blogs', href: '/discovered-blogs', icon: Database },
   { name: 'Comments', href: '/comments', icon: MessageSquare },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/settings', icon: SettingsIcon },

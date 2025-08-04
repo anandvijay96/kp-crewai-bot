@@ -46,12 +46,6 @@ interface RegisterData {
   role?: 'user' | 'admin' | 'moderator';
 }
 
-interface ApiError {
-  success: boolean;
-  message: string;
-  error?: string;
-  details?: Record<string, any>;
-}
 
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

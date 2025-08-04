@@ -13,6 +13,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { Dashboard } from '@/pages/Dashboard'
 import { Campaigns } from '@/pages/Campaigns'
 import { BlogResearch } from '@/pages/BlogResearch'
+import { DiscoveredBlogs } from '@/pages/DiscoveredBlogs'
 import { Comments } from '@/pages/Comments'
 import { Analytics } from '@/pages/Analytics'
 import { Settings } from '@/pages/Settings'
@@ -49,6 +50,7 @@ export function App() {
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="campaigns" element={<Campaigns />} />
                 <Route path="research" element={<BlogResearch />} />
+                <Route path="discovered-blogs" element={<DiscoveredBlogs />} />
                 <Route path="comments" element={<Comments />} />
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="settings" element={<Settings />} />
