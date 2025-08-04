@@ -120,18 +120,32 @@ def setup_routes():
         logger.warning(f"⚠️ Could not load agent routes: {e}")
         
     try:
-        from api.routes.blogs import router as blogs_router
+        from api.routes.blogs_real import router as blogs_router
         app.include_router(blogs_router, prefix="/api/blogs", tags=["Blog Research"])
-        logger.info("✅ Blog routes loaded")
+        logger.info("✅ Real blog routes loaded")
     except ImportError as e:
-        logger.warning(f"⚠️ Could not load blog routes: {e}")
+        logger.warning(f"⚠️ Could not load real blog routes: {e}")
+        # Fallback to mock blogs if real routes fail
+        try:
+            from api.routes.blogs import router as blogs_router
+            app.include_router(blogs_router, prefix="/api/blogs", tags=["Blog Research"])
+            logger.info("✅ Mock blog routes loaded as fallback")
+        except ImportError as e2:
+            logger.warning(f"⚠️ Could not load mock blog routes either: {e2}")
         
     try:
-        from api.routes.dashboard import router as dashboard_router
+        from api.routes.dashboard_real import router as dashboard_router
         app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
-        logger.info("✅ Dashboard routes loaded")
+        logger.info("✅ Real dashboard routes loaded")
     except ImportError as e:
-        logger.warning(f"⚠️ Could not load dashboard routes: {e}")
+        logger.warning(f"⚠️ Could not load real dashboard routes: {e}")
+        # Fallback to mock dashboard if real routes fail
+        try:
+            from api.routes.dashboard import router as dashboard_router
+            app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
+            logger.info("✅ Mock dashboard routes loaded as fallback")
+        except ImportError as e2:
+            logger.warning(f"⚠️ Could not load mock dashboard routes either: {e2}")
         
     try:
         from api.routes.comments import router as comments_router
@@ -152,6 +166,15 @@ def setup_routes():
 async def startup_event():
     """Application startup event."""
     logger.info("🚀 Starting CrewAI KP Bot API Server...")
+    
+    # Initialize database if needed
+    try:
+        from simple_db_init import create_tables
+        create_tables()
+        logger.info("✅ Database initialized")
+    except Exception as e:
+        logger.warning(f"⚠️ Database initialization warning: {e}")
+    
     setup_routes()
     logger.info("🎉 CrewAI KP Bot API Server ready!")
 

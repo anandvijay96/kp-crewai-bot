@@ -11,18 +11,43 @@ import logging
 from datetime import datetime
 import uuid
 
-from ..models import (
+from src.api.models import (
     CommentGenerationRequest,
     CommentGenerationResponse,
     BaseResponse,
     PaginationParams,
     CommentStyle
 )
-from ..auth import get_current_user
+from src.api.auth.jwt_handler import get_current_user
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# In-memory storage for generated comments (for MVP)
+# In production, this would be stored in a database
+# Use a global list that persists across requests
+class CommentStorage:
+    _instance = None
+    _comments = []
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(CommentStorage, cls).__new__(cls)
+        return cls._instance
+    
+    def add_comment(self, comment):
+        self._comments.append(comment)
+        logger.info(f"Added comment to storage. Total comments: {len(self._comments)}")
+    
+    def get_comments(self):
+        return self._comments.copy()
+    
+    def clear_comments(self):
+        self._comments.clear()
+
+# Create global storage instance
+comment_storage = CommentStorage()
 
 # ============================================================================
 # Comment Generation Operations
@@ -62,24 +87,34 @@ async def generate_comments(
             else:  # TECHNICAL
                 content = f"From a technical perspective, the implementation of structured data markup alongside these recommendations could amplify the results. I've seen 23% increases in CTR when combining schema.org markup with optimized meta descriptions."
             
+            # Extract domain for blog title
+            domain = str(request.blog_url).split('//')[1].split('/')[0] if '//' in str(request.blog_url) else str(request.blog_url)
+            blog_title = f"Article from {domain.replace('www.', '').title()}"
+            
             comment = {
                 "id": comment_id,
                 "content": content,
-                "style": request.style,
+                "style": request.style.value,
                 "quality_score": 0.85 + (i * 0.02),  # Vary quality slightly
                 "engagement_potential": 0.78 + (i * 0.03),
                 "keyword_density": 0.12 + (i * 0.01),
                 "readability_score": 0.82 + (i * 0.01),
+                "blog_url": str(request.blog_url),
+                "blog_title": blog_title,
+                "status": "pending_review",
+                "campaign_id": f"gen-{datetime.utcnow().strftime('%Y%m%d')}",
                 "risk_assessment": {
                     "spam_likelihood": 0.05,
                     "brand_safety": 0.95,
                     "authenticity_score": 0.88,
                     "policy_compliance": 0.98
                 },
-                "generated_at": datetime.utcnow()
+                "generated_at": datetime.utcnow().isoformat()
             }
             
             generated_comments.append(comment)
+            # Store in global storage for listing
+            comment_storage.add_comment(comment)
         
         # Mock generation statistics
         generation_stats = {
@@ -94,7 +129,7 @@ async def generate_comments(
         
         return CommentGenerationResponse(
             comments=generated_comments,
-            blog_url=request.blog_url,
+            blog_url=str(request.blog_url),
             generation_stats=generation_stats,
             execution_time=8.5,
             cost=0.34,
@@ -174,42 +209,27 @@ async def list_generated_comments(
     logger.info(f"Listing generated comments for user: {current_user['user_id']}")
     
     try:
-        # Mock generated comments data
-        all_comments = [
-            {
-                "id": "comment-1",
-                "content": "Great insights on this topic! The analysis is very thorough.",
-                "style": "engaging",
-                "quality_score": 0.87,
-                "blog_url": "https://searchengineland.com/seo-guide",
-                "blog_title": "Complete SEO Guide",
-                "generated_at": datetime.utcnow().isoformat(),
-                "campaign_id": "campaign-1",
-                "status": "approved"
-            },
-            {
-                "id": "comment-2",
-                "content": "How do you think this applies to local businesses?",
-                "style": "question",
-                "quality_score": 0.82,
-                "blog_url": "https://moz.com/local-seo",
-                "blog_title": "Local SEO Best Practices",
-                "generated_at": datetime.utcnow().isoformat(),
-                "campaign_id": "campaign-1",
-                "status": "pending_review"
-            },
-            {
-                "id": "comment-3",
-                "content": "From a technical perspective, the schema markup implementation...",
-                "style": "technical",
-                "quality_score": 0.91,
-                "blog_url": "https://backlinko.com/technical-seo",
-                "blog_title": "Technical SEO Guide",
-                "generated_at": datetime.utcnow().isoformat(),
-                "campaign_id": "campaign-2",
-                "status": "approved"
-            }
-        ]
+        # Use stored generated comments from new storage system
+        stored_comments = comment_storage.get_comments()
+        logger.info(f"Retrieved {len(stored_comments)} comments from storage")
+        
+        if stored_comments:
+            all_comments = stored_comments
+        else:
+            # Fallback sample data if no comments generated yet
+            all_comments = [
+                {
+                    "id": "sample-1",
+                    "content": "Welcome! Generate your first comments using the form above.",
+                    "style": "engaging",
+                    "quality_score": 0.75,
+                    "blog_url": "https://example.com/welcome",
+                    "blog_title": "Sample Comment",
+                    "generated_at": datetime.utcnow().isoformat(),
+                    "campaign_id": "sample",
+                    "status": "demo"
+                }
+            ]
         
         # Apply filters
         filtered_comments = all_comments
