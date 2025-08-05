@@ -28,8 +28,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # React dev server
+        "http://localhost:3001",  # Frontend dev server
         "http://localhost:5173",  # Vite dev server
         "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
         "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
@@ -71,6 +73,14 @@ try:
     logger.info("✅ Blog research routes loaded successfully")
 except ImportError as e:
     logger.error(f"❌ Failed to import blog research routes: {e}")
+
+# Include Comment Generation Routes
+try:
+    from src.api.routes.comments import router as comments_router
+    app.include_router(comments_router, prefix="/api/comments", tags=["Comment Generation"])
+    logger.info("✅ Comment generation routes loaded successfully")
+except ImportError as e:
+    logger.error(f"❌ Failed to import comment generation routes: {e}")
 
 # Include WebSocket support
 try:

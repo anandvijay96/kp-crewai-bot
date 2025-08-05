@@ -8,10 +8,19 @@ interface Comment {
   content: string
   style: string
   quality_score: number
-  blog_url: string
-  blog_title: string
+  engagement_potential?: number
+  keyword_density?: number
+  readability_score?: number
+  risk_assessment?: {
+    spam_likelihood: number
+    brand_safety: number
+    authenticity_score: number
+    policy_compliance: number
+  }
+  blog_url?: string
+  blog_title?: string
   generated_at: string
-  status: string
+  status?: string
 }
 
 interface CommentGenerationRequest {
@@ -41,12 +50,39 @@ export function Comments() {
   const fetchComments = async () => {
     try {
       setLoading(true)
+      console.log('🔄 Fetching comments from /api/comments/...')
       const response = await api.get('/api/comments/')
-      if (response.success && response.data) {
-        setComments(response.data.comments || [])
+      console.log('📥 Full API response:', response)
+      console.log('📋 Response type:', typeof response)
+      console.log('🔑 Response keys:', response ? Object.keys(response) : 'no response')
+      
+      // The backend returns a BaseResponse with comments at the root level
+      // Check both direct array and response.comments for compatibility
+      if (Array.isArray(response)) {
+        setComments(response);
+        console.log('✅ Set comments from direct array:', response.length, 'comments');
+      } else if (response && response.comments && Array.isArray(response.comments)) {
+        setComments(response.comments);
+        console.log('✅ Set comments from response.comments:', response.comments.length, 'comments');
+        console.log('📝 First comment preview:', response.comments[0]);
+      } else if (response && response.data && Array.isArray(response.data)) {
+        setComments(response.data);
+        console.log('✅ Set comments from response.data:', response.data.length, 'comments');
+      } else {
+        console.log('❌ No comments found in response structure:', {
+          isArray: Array.isArray(response),
+          hasComments: response && 'comments' in response,
+          commentsType: response && response.comments ? typeof response.comments : 'no comments',
+          commentsIsArray: response && response.comments ? Array.isArray(response.comments) : false,
+          hasData: response && 'data' in response,
+          responseKeys: response ? Object.keys(response) : 'no response',
+          fullResponse: response
+        });
+        setComments([]);
       }
+      console.log('🎯 Final comments state will be set to:', comments.length, 'items');
     } catch (error) {
-      console.error('Failed to fetch comments:', error)
+      console.error('❌ Failed to fetch comments:', error)
     } finally {
       setLoading(false)
     }
@@ -55,10 +91,13 @@ export function Comments() {
   const generateComments = async () => {
     try {
       setGenerating(true)
+      console.log('🤖 Generating comments...', generationForm)
       const response = await api.post('/api/comments/generate', generationForm)
+      console.log('🎉 Generation response:', response)
       
-      if (response.success) {
-        console.log('Comments generated successfully:', response.message)
+      if (response.success || response.message) {
+        console.log('✅ Comments generated successfully:', response.message)
+        console.log('🔄 Refreshing comments list...')
         await fetchComments() // Refresh the comments list
         setGenerationForm({
           blog_url: '',
@@ -67,9 +106,11 @@ export function Comments() {
           keywords: [],
           custom_instructions: ''
         })
+      } else {
+        console.log('⚠️ Generation response without success flag:', response)
       }
     } catch (error) {
-      console.error('Failed to generate comments:', error)
+      console.error('❌ Failed to generate comments:', error)
     } finally {
       setGenerating(false)
     }
@@ -210,6 +251,33 @@ export function Comments() {
           >
             {generating ? 'Generating...' : 'Generate Comments'}
           </Button>
+          <Button
+            onClick={() => {
+              console.log('Testing API directly...')
+              api.get('/api/comments/').then(response => {
+                console.log('Direct API test response:', response)
+                console.log('Response keys:', Object.keys(response))
+                console.log('Response.comments:', response.comments)
+                console.log('Response.data:', response.data)
+                console.log('All response properties:', {
+                  success: response.success,
+                  message: response.message,
+                  timestamp: response.timestamp,
+                  comments: response.comments,
+                  total: response.total,
+                  page: response.page,
+                  page_size: response.page_size
+                })
+                alert(`API Test: Found ${response.comments?.length || 0} comments. Success: ${response.success}. Check console for full details.`)
+              }).catch(error => {
+                console.error('Direct API test error:', error)
+                alert('API Test failed. Check console for details.')
+              })
+            }}
+            className="bg-yellow-600 hover:bg-yellow-700 text-white"
+          >
+            Test API
+          </Button>
         </div>
       </Card>
 
@@ -242,37 +310,79 @@ export function Comments() {
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                    {comment.blog_title}
+                    Comment #{comment.id.slice(0, 8)}
                   </h3>
-                  <p className="text-sm text-blue-600 dark:text-blue-400">
-                    {comment.blog_url}
-                  </p>
+                  {comment.blog_url && (
+                    <p className="text-sm text-blue-600 dark:text-blue-400">
+                      {comment.blog_url}
+                    </p>
+                  )}
                 </div>
                 <div className="text-right">
-                  <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                    comment.status === 'approved' 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                      : comment.status === 'pending_review'
-                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
-                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                  }`}>
-                    {comment.status.replace('_', ' ')}
-                  </span>
+                  {comment.status && (
+                    <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+                      comment.status === 'approved' 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                        : comment.status === 'pending_review'
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                    }`}>
+                      {comment.status.replace('_', ' ')}
+                    </span>
+                  )}
                 </div>
               </div>
+              
               <p className="text-gray-900 dark:text-gray-100 mb-4 leading-relaxed">
                 {comment.content}
               </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 dark:text-gray-400">
+              
+              {/* Main Metrics */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 dark:text-gray-400 mb-4">
                 <div>
                   <strong>Style:</strong> {comment.style}
                 </div>
                 <div>
                   <strong>Quality:</strong> {(comment.quality_score * 100).toFixed(1)}%
                 </div>
-                <div className="col-span-2">
-                  <strong>Generated:</strong> {new Date(comment.generated_at).toLocaleString()}
+                {comment.engagement_potential !== undefined && (
+                  <div>
+                    <strong>Engagement:</strong> {(comment.engagement_potential * 100).toFixed(1)}%
+                  </div>
+                )}
+                {comment.readability_score !== undefined && (
+                  <div>
+                    <strong>Readability:</strong> {(comment.readability_score * 100).toFixed(1)}%
+                  </div>
+                )}
+              </div>
+              
+              {/* Additional Metrics */}
+              {(comment.keyword_density !== undefined || comment.risk_assessment) && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 dark:text-gray-400 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  {comment.keyword_density !== undefined && (
+                    <div>
+                      <strong>Keyword Density:</strong> {(comment.keyword_density * 100).toFixed(1)}%
+                    </div>
+                  )}
+                  {comment.risk_assessment && (
+                    <>
+                      <div>
+                        <strong>Brand Safety:</strong> {(comment.risk_assessment.brand_safety * 100).toFixed(1)}%
+                      </div>
+                      <div>
+                        <strong>Authenticity:</strong> {(comment.risk_assessment.authenticity_score * 100).toFixed(1)}%
+                      </div>
+                      <div>
+                        <strong>Policy Compliance:</strong> {(comment.risk_assessment.policy_compliance * 100).toFixed(1)}%
+                      </div>
+                    </>
+                  )}
                 </div>
+              )}
+              
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                <strong>Generated:</strong> {new Date(comment.generated_at).toLocaleString()}
               </div>
             </Card>
           ))}

@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional
 import logging
 from datetime import datetime
 import uuid
+import json
 
 from src.api.models import (
     CommentGenerationRequest,
@@ -24,40 +25,85 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# In-memory storage for generated comments (for MVP)
-# In production, this would be stored in a database
-# Use a global list that persists across requests
-class CommentStorage:
-    _instance = None
-    _comments = []
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(CommentStorage, cls).__new__(cls)
-        return cls._instance
-    
-    def add_comment(self, comment):
-        self._comments.append(comment)
-        logger.info(f"Added comment to storage. Total comments: {len(self._comments)}")
-    
-    def get_comments(self):
-        return self._comments.copy()
-    
-    def clear_comments(self):
-        self._comments.clear()
+import sqlite3
 
-# Create global storage instance
-comment_storage = CommentStorage()
+# Database configuration
+DB_PATH = "seo_automation.db"
+
+def add_comment_to_db(comment):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO generated_comments (
+                uuid, content, style, quality_score, engagement_potential, keyword_density, readability_score,
+                blog_url, blog_title, status, campaign_id, risk_assessment, generated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            comment['id'],  # Store UUID in uuid column
+            comment['content'],
+            comment['style'],
+            comment['quality_score'],
+            comment['engagement_potential'],
+            comment['keyword_density'],
+            comment['readability_score'],
+            comment['blog_url'],
+            comment['blog_title'],
+            comment['status'],
+            comment['campaign_id'],
+            json.dumps(comment['risk_assessment']),
+            comment['generated_at']
+        ))
+        conn.commit()
+        conn.close()
+        logger.info("Comment added to database.")
+    except Exception as e:
+        logger.error(f"Error adding comment to database: {e}")
+
+
+def fetch_comments_from_db():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        # Order by generated_at DESC to show newest comments first
+        cursor.execute('SELECT * FROM generated_comments ORDER BY generated_at DESC')
+        comments = cursor.fetchall()
+        conn.close()
+        # Convert to list of dictionaries for easier manipulation
+        comment_list = [
+            {
+                "id": row[13] if row[13] else str(row[0]),  # Use UUID if available, else use auto-generated ID
+                "content": row[1],
+                "style": row[2],
+                "quality_score": row[3],
+                "engagement_potential": row[4],
+                "keyword_density": row[5],
+                "readability_score": row[6],
+                "blog_url": row[7],
+                "blog_title": row[8],
+                "status": row[9],
+                "campaign_id": row[10],
+                "risk_assessment": json.loads(row[11]) if row[11] else {},
+                "generated_at": row[12]
+            } for row in comments
+        ]
+        return comment_list
+    except Exception as e:
+        logger.error(f"Error fetching comments from database: {e}")
+        return []
+
+# Update global storage reference to use database
+comment_storage = None
 
 # ============================================================================
 # Comment Generation Operations
 # ============================================================================
 
-@router.post("/generate", response_model=CommentGenerationResponse)
+@router.post("/generate")
 async def generate_comments(
     request: CommentGenerationRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
-) -> CommentGenerationResponse:
+) -> Dict[str, Any]:
     """
     Generate AI-powered comments for a specific blog.
     
@@ -68,6 +114,9 @@ async def generate_comments(
     Returns:
         CommentGenerationResponse: Generated comments with quality metrics
     """
+    logger.info(f"🚀 GENERATE COMMENTS ENDPOINT CALLED")
+    logger.info(f"Request data: {request}")
+    logger.info(f"User: {current_user.get('user_id', 'unknown')}")
     logger.info(f"Generating {request.max_comments} comments for {request.blog_url}")
     
     try:
@@ -113,8 +162,8 @@ async def generate_comments(
             }
             
             generated_comments.append(comment)
-            # Store in global storage for listing
-            comment_storage.add_comment(comment)
+            # Store in database
+            add_comment_to_db(comment)
         
         # Mock generation statistics
         generation_stats = {
@@ -127,14 +176,29 @@ async def generate_comments(
             "generation_iterations": 1
         }
         
-        return CommentGenerationResponse(
-            comments=generated_comments,
-            blog_url=str(request.blog_url),
-            generation_stats=generation_stats,
-            execution_time=8.5,
-            cost=0.34,
-            message="Comments generated successfully"
-        )
+        # Create the generation response
+        generation_response = {
+            "comments": generated_comments,
+            "blog_url": str(request.blog_url),
+            "generation_stats": generation_stats,
+            "execution_time": 8.5,
+            "cost": 0.34,
+            "message": "Comments generated successfully"
+        }
+        
+        # Return in the expected API response format
+        final_response = {
+            "success": True,
+            "message": "Comments generated successfully",
+            "data": generation_response,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        logger.info(f"✅ COMMENT GENERATION COMPLETED SUCCESSFULLY")
+        logger.info(f"Generated {len(generated_comments)} comments")
+        logger.info(f"Response structure: {list(final_response.keys())}")
+        
+        return final_response
         
     except Exception as e:
         logger.error(f"Comment generation error: {e}")
@@ -185,14 +249,14 @@ async def batch_generate_comments(
 # Comment Management Operations
 # ============================================================================
 
-@router.get("/", response_model=BaseResponse)
+@router.get("/")
 async def list_generated_comments(
     pagination: PaginationParams = Depends(),
     style_filter: Optional[CommentStyle] = None,
     min_quality: Optional[float] = None,
     blog_url: Optional[str] = None,
     current_user: Dict[str, Any] = Depends(get_current_user)
-) -> BaseResponse:
+) -> Dict[str, Any]:
     """
     List previously generated comments with filtering and pagination.
     
@@ -209,8 +273,8 @@ async def list_generated_comments(
     logger.info(f"Listing generated comments for user: {current_user['user_id']}")
     
     try:
-        # Use stored generated comments from new storage system
-        stored_comments = comment_storage.get_comments()
+        # Fetch comments from database
+        stored_comments = fetch_comments_from_db()
         logger.info(f"Retrieved {len(stored_comments)} comments from storage")
         
         if stored_comments:
@@ -257,15 +321,21 @@ async def list_generated_comments(
         end_idx = start_idx + pagination.page_size
         paginated_comments = filtered_comments[start_idx:end_idx]
         
-        return BaseResponse(
-            message="Generated comments retrieved successfully",
-            **{
-                "comments": paginated_comments,
-                "total": len(filtered_comments),
-                "page": pagination.page,
-                "page_size": pagination.page_size
-            }
-        )
+        response_data = {
+            "comments": paginated_comments,
+            "total": len(filtered_comments),
+            "page": pagination.page,
+            "page_size": pagination.page_size
+        }
+        
+        logger.info(f"Returning response with {len(paginated_comments)} comments")
+        logger.info(f"Sample comment IDs: {[c.get('id', 'no-id')[:8] for c in paginated_comments[:3]]}")
+        
+        return {
+            "message": "Generated comments retrieved successfully",
+            "timestamp": datetime.utcnow().isoformat(),
+            **response_data
+        }
         
     except Exception as e:
         logger.error(f"Comment listing error: {e}")
@@ -572,6 +642,33 @@ async def process_batch_comments(batch_id: str, requests: List[CommentGeneration
 # ============================================================================
 # Health Check
 # ============================================================================
+
+@router.get("/debug")
+async def debug_comments() -> Dict[str, Any]:
+    """
+    Debug endpoint to check comments without authentication.
+    """
+    try:
+        # Fetch comments from database
+        stored_comments = fetch_comments_from_db()
+        
+        return {
+            "status": "debug",
+            "comments_count": len(stored_comments),
+            "comments": stored_comments[:3],  # Return first 3 for debugging
+            "raw_response_structure": {
+                "success": True,
+                "message": "Debug response",
+                "comments": stored_comments,
+                "total": len(stored_comments)
+            }
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "comments_count": 0
+        }
 
 @router.get("/health")
 async def comments_health_check() -> Dict[str, Any]:

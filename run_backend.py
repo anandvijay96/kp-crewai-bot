@@ -33,8 +33,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # React dev server
+        "http://localhost:3001",  # Frontend dev server
         "http://localhost:5173",  # Vite dev server
         "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
         "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
@@ -93,8 +95,8 @@ async def root():
 def setup_routes():
     """Setup API routes with error handling."""
     try:
-        # Try to import routes with absolute imports
-        from api.routes.auth_new import router as auth_router
+        # Fix import paths with src prefix
+        from src.api.routes.auth_new import router as auth_router
         app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"]) 
         logger.info("✅ Authentication routes loaded")
     except ImportError as e:
@@ -106,56 +108,56 @@ def setup_routes():
             return {"status": "healthy", "service": "Authentication System"}
     
     try:
-        from api.routes.campaigns import router as campaigns_router
+        from src.api.routes.campaigns import router as campaigns_router
         app.include_router(campaigns_router, prefix="/api/campaigns", tags=["Campaigns"])
         logger.info("✅ Campaign routes loaded")
     except ImportError as e:
         logger.warning(f"⚠️ Could not load campaign routes: {e}")
         
     try:
-        from api.routes.agents import router as agents_router
+        from src.api.routes.agents import router as agents_router
         app.include_router(agents_router, prefix="/api/agents", tags=["Agents"])
         logger.info("✅ Agent routes loaded")
     except ImportError as e:
         logger.warning(f"⚠️ Could not load agent routes: {e}")
         
     try:
-        from api.routes.blogs_real import router as blogs_router
+        from src.api.routes.blogs_real import router as blogs_router
         app.include_router(blogs_router, prefix="/api/blogs", tags=["Blog Research"])
         logger.info("✅ Real blog routes loaded")
     except ImportError as e:
         logger.warning(f"⚠️ Could not load real blog routes: {e}")
         # Fallback to mock blogs if real routes fail
         try:
-            from api.routes.blogs import router as blogs_router
+            from src.api.routes.blogs import router as blogs_router
             app.include_router(blogs_router, prefix="/api/blogs", tags=["Blog Research"])
             logger.info("✅ Mock blog routes loaded as fallback")
         except ImportError as e2:
             logger.warning(f"⚠️ Could not load mock blog routes either: {e2}")
         
     try:
-        from api.routes.dashboard_real import router as dashboard_router
+        from src.api.routes.dashboard_real import router as dashboard_router
         app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
         logger.info("✅ Real dashboard routes loaded")
     except ImportError as e:
         logger.warning(f"⚠️ Could not load real dashboard routes: {e}")
         # Fallback to mock dashboard if real routes fail
         try:
-            from api.routes.dashboard import router as dashboard_router
+            from src.api.routes.dashboard import router as dashboard_router
             app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
             logger.info("✅ Mock dashboard routes loaded as fallback")
         except ImportError as e2:
             logger.warning(f"⚠️ Could not load mock dashboard routes either: {e2}")
         
     try:
-        from api.routes.comments import router as comments_router
+        from src.api.routes.comments import router as comments_router
         app.include_router(comments_router, prefix="/api/comments", tags=["Comment Generation"])
         logger.info("✅ Comment routes loaded")
     except ImportError as e:
         logger.warning(f"⚠️ Could not load comment routes: {e}")
         
     try:
-        from api.routes.tasks import router as tasks_router
+        from src.api.routes.tasks import router as tasks_router
         app.include_router(tasks_router, prefix="/api/tasks", tags=["Task Management"])
         logger.info("✅ Task routes loaded")
     except ImportError as e:

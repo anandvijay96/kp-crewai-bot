@@ -188,10 +188,25 @@ class ApiClient {
 
       clearTimeout(timeoutId);
 
-      const data = await response.json().catch(() => ({ 
-        success: false, 
-        message: 'Invalid JSON response' 
-      }));
+      // Debug logging for the raw response
+      console.log('Raw HTTP response status:', response.status);
+      console.log('Raw HTTP response headers:', Object.fromEntries(response.headers.entries()));
+      
+      const responseText = await response.text();
+      console.log('Raw response text:', responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('Parsed JSON data:', data);
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        data = { 
+          success: false, 
+          message: 'Invalid JSON response',
+          raw_text: responseText
+        };
+      }
 
       if (!response.ok) {
         throw new ApiError(
